@@ -260,6 +260,11 @@ class GymTracker {
                 this.hideFullHistory();
             }
         });
+
+        // Edit exercise name in modal
+        document.getElementById('edit-name-btn').addEventListener('click', () => {
+            this.editExerciseName(this.currentExercise);
+        });
     }
 
     // Navigation
@@ -298,28 +303,14 @@ class GymTracker {
             exerciseCard.className = 'exercise-card';
             exerciseCard.innerHTML = `
                 <div class="exercise-info">
-                    <div class="exercise-name-container">
-                        <h3 class="exercise-name" data-exercise="${name}">${name}</h3>
-                        <button class="edit-name-btn" data-exercise="${name}" title="Edit name">✏️</button>
-                    </div>
+                    <h3>${name}</h3>
                     <div class="last-modified">${this.formatDate(lastModified)}</div>
                 </div>
                 <div class="exercise-value">${currentValue}</div>
             `;
             
-            // Add click handler for the main card (excluding the edit name button)
-            exerciseCard.addEventListener('click', (e) => {
-                // Don't trigger if clicking the edit name button
-                if (!e.target.classList.contains('edit-name-btn')) {
-                    this.editExercise(name, currentValue);
-                }
-            });
-            
-            // Add click handler for the edit name button
-            const editNameBtn = exerciseCard.querySelector('.edit-name-btn');
-            editNameBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                this.editExerciseName(name);
+            exerciseCard.addEventListener('click', () => {
+                this.editExercise(name, currentValue);
             });
             
             exercisesList.appendChild(exerciseCard);
@@ -344,7 +335,7 @@ class GymTracker {
     }
 
     editExerciseName(currentName) {
-        const nameElement = document.querySelector(`[data-exercise="${currentName}"].exercise-name`);
+        const nameElement = document.getElementById('edit-exercise-name');
         if (!nameElement) return;
         
         // Create inline input
@@ -387,19 +378,16 @@ class GymTracker {
             exercises[newName] = exercises[currentName];
             delete exercises[currentName];
             
-            // Update current exercise reference if it's being edited
-            if (this.currentExercise === currentName) {
-                this.currentExercise = newName;
-                // Update edit modal title if it's open
-                const editModal = document.getElementById('edit-modal');
-                if (!editModal.classList.contains('hidden')) {
-                    document.getElementById('edit-exercise-name').textContent = newName;
-                }
-                // Update full history modal title if it's open
-                const fullHistoryModal = document.getElementById('full-history-modal');
-                if (!fullHistoryModal.classList.contains('hidden')) {
-                    document.getElementById('full-history-exercise-name').textContent = `${newName} - Full History`;
-                }
+            // Update current exercise reference
+            this.currentExercise = newName;
+            
+            // Update modal title
+            nameElement.textContent = newName;
+            
+            // Update full history modal title if it's open
+            const fullHistoryModal = document.getElementById('full-history-modal');
+            if (!fullHistoryModal.classList.contains('hidden')) {
+                document.getElementById('full-history-exercise-name').textContent = `${newName} - Full History`;
             }
             
             // Save and refresh
