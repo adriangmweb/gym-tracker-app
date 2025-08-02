@@ -87,7 +87,7 @@
             <header class="header">
                 <button class="back-btn" id="back-to-groups">←</button>
                 <h1 id="muscle-group-title">Back</h1>
-                <div class="spacer"></div>
+                <button class="add-btn" id="add-exercise-btn">+</button>
             </header>
             
             <div id="exercises-list" class="exercises-list">
@@ -106,6 +106,25 @@
                 <div class="modal-actions">
                     <button class="btn btn-secondary" id="cancel-edit">Cancel</button>
                     <button class="btn btn-primary" id="save-edit">Save</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Add Exercise Modal -->
+        <div id="add-modal" class="modal hidden">
+            <div class="modal-content">
+                <h2>Add New Exercise</h2>
+                <div class="input-group">
+                    <label for="new-exercise-name">Exercise Name</label>
+                    <input type="text" id="new-exercise-name" placeholder="Enter exercise name">
+                </div>
+                <div class="input-group">
+                    <label for="new-exercise-value">Initial Weight/Value</label>
+                    <input type="text" id="new-exercise-value" placeholder="Enter initial weight">
+                </div>
+                <div class="modal-actions">
+                    <button class="btn btn-secondary" id="cancel-add">Cancel</button>
+                    <button class="btn btn-primary" id="save-add">Add Exercise</button>
                 </div>
             </div>
         </div>
