@@ -99,8 +99,17 @@
         <div id="edit-modal" class="modal hidden">
             <div class="modal-content">
                 <h2 id="edit-exercise-name">Exercise</h2>
+                
+                <!-- History Section -->
+                <div id="exercise-history" class="history-section">
+                    <label>Recent Weights</label>
+                    <div id="history-list" class="history-list">
+                        <!-- History entries will be populated dynamically -->
+                    </div>
+                </div>
+                
                 <div class="input-group">
-                    <label for="exercise-value">Weight/Value</label>
+                    <label for="exercise-value">New Weight/Value</label>
                     <input type="text" id="exercise-value" placeholder="Enter weight or description">
                 </div>
                 <div class="modal-actions">

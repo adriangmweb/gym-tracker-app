@@ -362,6 +362,54 @@ body {
     background-color: var(--bg-primary);
 }
 
+/* Exercise History */
+.history-section {
+    margin-bottom: 1.5rem;
+}
+
+.history-section label {
+    display: block;
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    margin-bottom: 0.75rem;
+}
+
+.history-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.history-entry {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    background-color: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    font-size: 0.95rem;
+}
+
+.history-entry:first-child {
+    border-color: var(--accent-primary);
+    background-color: rgba(0, 122, 255, 0.1);
+}
+
+.history-value {
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.history-date {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+.history-entry:first-child .history-value {
+    color: var(--accent-primary);
+}
+
 /* Responsive Design */
 @media (max-width: 480px) {
     .screen {

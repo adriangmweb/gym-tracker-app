@@ -299,15 +299,42 @@ class GymTracker {
     editExercise(exerciseName, currentValue) {
         this.currentExercise = exerciseName;
         document.getElementById('edit-exercise-name').textContent = exerciseName;
-        document.getElementById('exercise-value').value = currentValue;
+        document.getElementById('exercise-value').value = '';
+        
+        // Populate history
+        this.populateHistory(exerciseName);
+        
         this.showModal();
         
-        // Focus and select input
+        // Focus on input
         setTimeout(() => {
             const input = document.getElementById('exercise-value');
             input.focus();
-            input.select();
         }, 100);
+    }
+
+    populateHistory(exerciseName) {
+        const exercises = this.data.profiles[this.currentProfile].exercises[this.currentMuscleGroup];
+        const exercise = exercises[exerciseName];
+        const historyList = document.getElementById('history-list');
+        
+        historyList.innerHTML = '';
+        
+        if (exercise && exercise.history && exercise.history.length > 0) {
+            const lastThree = this.getLastThreeWeights(exercise);
+            
+            lastThree.forEach((entry, index) => {
+                const historyEntry = document.createElement('div');
+                historyEntry.className = 'history-entry';
+                historyEntry.innerHTML = `
+                    <div class="history-value">${entry.value}</div>
+                    <div class="history-date">${this.formatDate(entry.date)}</div>
+                `;
+                historyList.appendChild(historyEntry);
+            });
+        } else {
+            historyList.innerHTML = '<div class="history-entry"><div class="history-value">No history yet</div></div>';
+        }
     }
 
     saveExercise() {
@@ -315,10 +342,19 @@ class GymTracker {
         if (!newValue) return;
 
         const exercises = this.data.profiles[this.currentProfile].exercises[this.currentMuscleGroup];
-        exercises[this.currentExercise] = {
-            value: newValue,
-            lastModified: new Date().toISOString()
-        };
+        const exercise = exercises[this.currentExercise];
+        
+        // Add new entry to beginning of history array (most recent first)
+        if (exercise && exercise.history) {
+            exercise.history.unshift(this.createHistoryEntry(newValue));
+            // Keep only last 10 entries to prevent unlimited growth
+            if (exercise.history.length > 10) {
+                exercise.history = exercise.history.slice(0, 10);
+            }
+        } else {
+            // Create new exercise with history if it doesn't exist
+            exercises[this.currentExercise] = this.createExercise(newValue);
+        }
 
         this.saveData();
         this.renderExercises();
@@ -378,10 +414,7 @@ class GymTracker {
             this.data.profiles[this.currentProfile].exercises[this.currentMuscleGroup] = {};
         }
 
-        this.data.profiles[this.currentProfile].exercises[this.currentMuscleGroup][exerciseName] = {
-            value: exerciseValue,
-            lastModified: new Date().toISOString()
-        };
+        this.data.profiles[this.currentProfile].exercises[this.currentMuscleGroup][exerciseName] = this.createExercise(exerciseValue);
 
         // Save and refresh
         this.saveData();
