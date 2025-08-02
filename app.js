@@ -19,6 +19,15 @@ class GymTracker {
     }
 
     // Data Management
+    createExercise(initialValue) {
+        return {
+            history: [{
+                value: initialValue,
+                date: new Date().toISOString()
+            }]
+        };
+    }
+
     initializeData() {
         if (!this.data.profiles) {
             this.data = {
@@ -27,42 +36,42 @@ class GymTracker {
                         name: 'Elena',
                         exercises: {
                             back: {
-                                'Upper back': { value: '25kg', lastModified: new Date().toISOString() },
-                                'Low row': { value: '45kg', lastModified: new Date().toISOString() },
-                                'Lat pulldown': { value: '30kg', lastModified: new Date().toISOString() },
-                                'Pulley': { value: '25kg', lastModified: new Date().toISOString() },
-                                'Pull-ups': { value: '30kg', lastModified: new Date().toISOString() }
+                                'Upper back': this.createExercise('25kg'),
+                                'Low row': this.createExercise('45kg'),
+                                'Lat pulldown': this.createExercise('30kg'),
+                                'Pulley': this.createExercise('25kg'),
+                                'Pull-ups': this.createExercise('30kg')
                             },
                             biceps: {
-                                'Bicep machine': { value: '16kg', lastModified: new Date().toISOString() },
-                                'Dumbbell curl': { value: '12.5kg', lastModified: new Date().toISOString() },
-                                'Cable curl': { value: '12.5kg', lastModified: new Date().toISOString() }
+                                'Bicep machine': this.createExercise('16kg'),
+                                'Dumbbell curl': this.createExercise('12.5kg'),
+                                'Cable curl': this.createExercise('12.5kg')
                             },
                             legs: {
-                                'Abductor': { value: '55kg', lastModified: new Date().toISOString() },
-                                'Leg extension': { value: '35kg', lastModified: new Date().toISOString() },
-                                'Prone leg curl': { value: '30kg', lastModified: new Date().toISOString() },
-                                'Leg curl': { value: '35kg', lastModified: new Date().toISOString() },
-                                'Leg press': { value: '90kg', lastModified: new Date().toISOString() },
-                                'Deadlift': { value: '20kg', lastModified: new Date().toISOString() },
-                                'Calves': { value: '80kg', lastModified: new Date().toISOString() },
-                                'Inner thigh': { value: '35kg', lastModified: new Date().toISOString() }
+                                'Abductor': this.createExercise('55kg'),
+                                'Leg extension': this.createExercise('35kg'),
+                                'Prone leg curl': this.createExercise('30kg'),
+                                'Leg curl': this.createExercise('35kg'),
+                                'Leg press': this.createExercise('90kg'),
+                                'Deadlift': this.createExercise('20kg'),
+                                'Calves': this.createExercise('80kg'),
+                                'Inner thigh': this.createExercise('35kg')
                             },
                             triceps: {
-                                'Tricep kickbacks': { value: '9kg', lastModified: new Date().toISOString() },
-                                'Cable bar': { value: '20kg', lastModified: new Date().toISOString() },
-                                'French press': { value: '10kg', lastModified: new Date().toISOString() },
-                                'Cable french press': { value: '12.5kg', lastModified: new Date().toISOString() }
+                                'Tricep kickbacks': this.createExercise('9kg'),
+                                'Cable bar': this.createExercise('20kg'),
+                                'French press': this.createExercise('10kg'),
+                                'Cable french press': this.createExercise('12.5kg')
                             },
                             shoulders: {
-                                'Military press': { value: '7.5kg', lastModified: new Date().toISOString() },
-                                'Lateral raises': { value: '7kg', lastModified: new Date().toISOString() },
-                                'Face pull': { value: '16kg', lastModified: new Date().toISOString() },
-                                'Shoulder press': { value: '15kg', lastModified: new Date().toISOString() }
+                                'Military press': this.createExercise('7.5kg'),
+                                'Lateral raises': this.createExercise('7kg'),
+                                'Face pull': this.createExercise('16kg'),
+                                'Shoulder press': this.createExercise('15kg')
                             },
                             chest: {
-                                'Chest fly': { value: '20kg', lastModified: new Date().toISOString() },
-                                'Chest press': { value: '25kg', lastModified: new Date().toISOString() }
+                                'Chest fly': this.createExercise('20kg'),
+                                'Chest press': this.createExercise('25kg')
                             }
                         }
                     },
@@ -70,40 +79,40 @@ class GymTracker {
                         name: 'Adri',
                         exercises: {
                             biceps: {
-                                'Bicep machine': { value: '41kg', lastModified: new Date().toISOString() },
-                                'Hammer curl': { value: '15kg', lastModified: new Date().toISOString() },
-                                'Cable curl': { value: '17kg', lastModified: new Date().toISOString() }
+                                'Bicep machine': this.createExercise('41kg'),
+                                'Hammer curl': this.createExercise('15kg'),
+                                'Cable curl': this.createExercise('17kg')
                             },
                             triceps: {
-                                'Cable bar': { value: '20kg', lastModified: new Date().toISOString() },
-                                'Kickbacks': { value: '12kg', lastModified: new Date().toISOString() },
-                                'Standing french press': { value: '12kg', lastModified: new Date().toISOString() },
-                                'Cable french press': { value: '15kg', lastModified: new Date().toISOString() }
+                                'Cable bar': this.createExercise('20kg'),
+                                'Kickbacks': this.createExercise('12kg'),
+                                'Standing french press': this.createExercise('12kg'),
+                                'Cable french press': this.createExercise('15kg')
                             },
                             back: {
-                                'Low row': { value: '55kg', lastModified: new Date().toISOString() },
-                                'Upper back': { value: '35kg', lastModified: new Date().toISOString() },
-                                'Pulley': { value: '30kg', lastModified: new Date().toISOString() },
-                                'Lat pulldown': { value: '45kg', lastModified: new Date().toISOString() }
+                                'Low row': this.createExercise('55kg'),
+                                'Upper back': this.createExercise('35kg'),
+                                'Pulley': this.createExercise('30kg'),
+                                'Lat pulldown': this.createExercise('45kg')
                             },
                             legs: {
-                                'Leg extension': { value: '45kg', lastModified: new Date().toISOString() },
-                                'Leg press': { value: '80kg', lastModified: new Date().toISOString() },
-                                'Prone leg curl': { value: '32kg', lastModified: new Date().toISOString() },
-                                'Leg curl': { value: '40kg', lastModified: new Date().toISOString() },
-                                'Abductor': { value: '45kg', lastModified: new Date().toISOString() },
-                                'Calves': { value: '80kg', lastModified: new Date().toISOString() },
-                                'Inner thigh': { value: '20kg', lastModified: new Date().toISOString() }
+                                'Leg extension': this.createExercise('45kg'),
+                                'Leg press': this.createExercise('80kg'),
+                                'Prone leg curl': this.createExercise('32kg'),
+                                'Leg curl': this.createExercise('40kg'),
+                                'Abductor': this.createExercise('45kg'),
+                                'Calves': this.createExercise('80kg'),
+                                'Inner thigh': this.createExercise('20kg')
                             },
                             chest: {
-                                'Chest press': { value: '50kg', lastModified: new Date().toISOString() },
-                                'Chest fly': { value: '40kg', lastModified: new Date().toISOString() }
+                                'Chest press': this.createExercise('50kg'),
+                                'Chest fly': this.createExercise('40kg')
                             },
                             shoulders: {
-                                'Military press': { value: '12.5kg', lastModified: new Date().toISOString() },
-                                'Shoulder fly': { value: '7.5kg', lastModified: new Date().toISOString() },
-                                'Face pull': { value: '15kg', lastModified: new Date().toISOString() },
-                                'Shoulder press': { value: '35kg', lastModified: new Date().toISOString() }
+                                'Military press': this.createExercise('12.5kg'),
+                                'Shoulder fly': this.createExercise('7.5kg'),
+                                'Face pull': this.createExercise('15kg'),
+                                'Shoulder press': this.createExercise('35kg')
                             }
                         }
                     }
@@ -129,6 +138,28 @@ class GymTracker {
         } catch (error) {
             console.error('Error saving data:', error);
         }
+    }
+
+
+    createHistoryEntry(value) {
+        return {
+            value: value,
+            date: new Date().toISOString()
+        };
+    }
+
+    getCurrentValue(exercise) {
+        if (exercise.history && exercise.history.length > 0) {
+            return exercise.history[0].value; // Most recent is first
+        }
+        return exercise.value || '0kg'; // Fallback for old format
+    }
+
+    getLastThreeWeights(exercise) {
+        if (exercise.history && exercise.history.length > 0) {
+            return exercise.history.slice(0, 3); // Get last 3 entries
+        }
+        return [];
     }
 
     // Event Bindings
@@ -244,18 +275,21 @@ class GymTracker {
         exercisesList.innerHTML = '';
         
         Object.entries(exercises).forEach(([name, data]) => {
+            const currentValue = this.getCurrentValue(data);
+            const lastModified = data.history && data.history.length > 0 ? data.history[0].date : new Date().toISOString();
+            
             const exerciseCard = document.createElement('div');
             exerciseCard.className = 'exercise-card';
             exerciseCard.innerHTML = `
                 <div class="exercise-info">
                     <h3>${name}</h3>
-                    <div class="last-modified">${this.formatDate(data.lastModified)}</div>
+                    <div class="last-modified">${this.formatDate(lastModified)}</div>
                 </div>
-                <div class="exercise-value">${data.value}</div>
+                <div class="exercise-value">${currentValue}</div>
             `;
             
             exerciseCard.addEventListener('click', () => {
-                this.editExercise(name, data.value);
+                this.editExercise(name, currentValue);
             });
             
             exercisesList.appendChild(exerciseCard);
