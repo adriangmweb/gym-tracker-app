@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gym Tracker</title>
+    <meta name="description" content="Track your gym exercises and weights">
+    <meta name="theme-color" content="#1a1a1a">
+    
+    <!-- PWA Meta Tags -->
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="icons/icon-192x192.svg">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Gym Tracker">
+    
+    <!-- CSS -->
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div id="app">
+        <!-- Loading Screen -->
+        <div id="loading-screen" class="screen loading-screen">
+            <div class="loading-content">
+                <div class="logo">💪</div>
+                <h1>Gym Tracker</h1>
+            </div>
+        </div>
+
+        <!-- Main Screen -->
+        <div id="main-screen" class="screen hidden">
+            <header class="main-header">
+                <h1>Gym Tracker</h1>
+                <p>Select your profile</p>
+            </header>
+            
+            <div class="profile-selector">
+                <button class="profile-btn" data-profile="elena">
+                    <div class="profile-icon">E</div>
+                    <span>Elena</span>
+                </button>
+                <button class="profile-btn" data-profile="adri">
+                    <div class="profile-icon">A</div>
+                    <span>Adri</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Muscle Groups Screen -->
+        <div id="muscle-groups-screen" class="screen hidden">
+            <header class="header">
+                <button class="back-btn" id="back-to-main">←</button>
+                <h1 id="profile-title">Elena</h1>
+                <div class="spacer"></div>
+            </header>
+            
+            <div class="muscle-groups">
+                <button class="muscle-group-btn" data-group="back">
+                    <span>Back</span>
+                    <div class="chevron">→</div>
+                </button>
+                <button class="muscle-group-btn" data-group="biceps">
+                    <span>Biceps</span>
+                    <div class="chevron">→</div>
+                </button>
+                <button class="muscle-group-btn" data-group="legs">
+                    <span>Legs</span>
+                    <div class="chevron">→</div>
+                </button>
+                <button class="muscle-group-btn" data-group="triceps">
+                    <span>Triceps</span>
+                    <div class="chevron">→</div>
+                </button>
+                <button class="muscle-group-btn" data-group="shoulders">
+                    <span>Shoulders</span>
+                    <div class="chevron">→</div>
+                </button>
+                <button class="muscle-group-btn" data-group="chest">
+                    <span>Chest</span>
+                    <div class="chevron">→</div>
+                </button>
+            </div>
+        </div>
+
+        <!-- Exercises Screen -->
+        <div id="exercises-screen" class="screen hidden">
+            <header class="header">
+                <button class="back-btn" id="back-to-groups">←</button>
+                <h1 id="muscle-group-title">Back</h1>
+                <div class="spacer"></div>
+            </header>
+            
+            <div id="exercises-list" class="exercises-list">
+                <!-- Exercises will be populated dynamically -->
+            </div>
+        </div>
+
+        <!-- Edit Modal -->
+        <div id="edit-modal" class="modal hidden">
+            <div class="modal-content">
+                <h2 id="edit-exercise-name">Exercise</h2>
+                <div class="input-group">
+                    <label for="exercise-value">Weight/Value</label>
+                    <input type="text" id="exercise-value" placeholder="Enter weight or description">
+                </div>
+                <div class="modal-actions">
+                    <button class="btn btn-secondary" id="cancel-edit">Cancel</button>
+                    <button class="btn btn-primary" id="save-edit">Save</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
