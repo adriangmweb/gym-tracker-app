@@ -298,14 +298,28 @@ class GymTracker {
             exerciseCard.className = 'exercise-card';
             exerciseCard.innerHTML = `
                 <div class="exercise-info">
-                    <h3>${name}</h3>
+                    <div class="exercise-name-container">
+                        <h3 class="exercise-name" data-exercise="${name}">${name}</h3>
+                        <button class="edit-name-btn" data-exercise="${name}" title="Edit name">✏️</button>
+                    </div>
                     <div class="last-modified">${this.formatDate(lastModified)}</div>
                 </div>
                 <div class="exercise-value">${currentValue}</div>
             `;
             
-            exerciseCard.addEventListener('click', () => {
-                this.editExercise(name, currentValue);
+            // Add click handler for the main card (excluding the edit name button)
+            exerciseCard.addEventListener('click', (e) => {
+                // Don't trigger if clicking the edit name button
+                if (!e.target.classList.contains('edit-name-btn')) {
+                    this.editExercise(name, currentValue);
+                }
+            });
+            
+            // Add click handler for the edit name button
+            const editNameBtn = exerciseCard.querySelector('.edit-name-btn');
+            editNameBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.editExerciseName(name);
             });
             
             exercisesList.appendChild(exerciseCard);
@@ -327,6 +341,81 @@ class GymTracker {
             const input = document.getElementById('exercise-value');
             input.focus();
         }, 100);
+    }
+
+    editExerciseName(currentName) {
+        const nameElement = document.querySelector(`[data-exercise="${currentName}"].exercise-name`);
+        if (!nameElement) return;
+        
+        // Create inline input
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.value = currentName;
+        input.className = 'exercise-name-input';
+        
+        // Replace name with input
+        nameElement.style.display = 'none';
+        nameElement.parentNode.insertBefore(input, nameElement);
+        input.focus();
+        input.select();
+        
+        // Save on blur or enter
+        const saveEdit = () => {
+            const newName = input.value.trim();
+            if (!newName) {
+                alert('Exercise name cannot be empty');
+                input.focus();
+                return;
+            }
+            
+            if (newName === currentName) {
+                // No change, just restore
+                nameElement.style.display = 'block';
+                input.remove();
+                return;
+            }
+            
+            // Check for duplicate names
+            const exercises = this.data.profiles[this.currentProfile].exercises[this.currentMuscleGroup];
+            if (exercises[newName]) {
+                alert('An exercise with this name already exists');
+                input.focus();
+                return;
+            }
+            
+            // Update data structure - move exercise data to new key
+            exercises[newName] = exercises[currentName];
+            delete exercises[currentName];
+            
+            // Update current exercise reference if it's being edited
+            if (this.currentExercise === currentName) {
+                this.currentExercise = newName;
+                // Update edit modal title if it's open
+                const editModal = document.getElementById('edit-modal');
+                if (!editModal.classList.contains('hidden')) {
+                    document.getElementById('edit-exercise-name').textContent = newName;
+                }
+                // Update full history modal title if it's open
+                const fullHistoryModal = document.getElementById('full-history-modal');
+                if (!fullHistoryModal.classList.contains('hidden')) {
+                    document.getElementById('full-history-exercise-name').textContent = `${newName} - Full History`;
+                }
+            }
+            
+            // Save and refresh
+            this.saveData();
+            this.renderExercises();
+        };
+        
+        input.addEventListener('blur', saveEdit);
+        input.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                saveEdit();
+            } else if (e.key === 'Escape') {
+                nameElement.style.display = 'block';
+                input.remove();
+            }
+        });
     }
 
     populateHistory(exerciseName) {
