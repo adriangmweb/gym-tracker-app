@@ -99,13 +99,25 @@
         <div id="edit-modal" class="modal hidden">
             <div class="modal-content">
                 <h2 id="edit-exercise-name">Exercise</h2>
+                
                 <div class="input-group">
-                    <label for="exercise-value">Weight/Value</label>
+                    <label for="exercise-value">New Weight/Value</label>
                     <input type="text" id="exercise-value" placeholder="Enter weight or description">
                 </div>
                 <div class="modal-actions">
                     <button class="btn btn-secondary" id="cancel-edit">Cancel</button>
                     <button class="btn btn-primary" id="save-edit">Save</button>
+                </div>
+                
+                <!-- History Section -->
+                <div id="exercise-history" class="history-section">
+                    <div class="history-header">
+                        <label>Recent Weights</label>
+                        <button class="btn-link" id="see-all-history">See All</button>
+                    </div>
+                    <div id="history-list" class="history-list">
+                        <!-- History entries will be populated dynamically -->
+                    </div>
                 </div>
             </div>
         </div>
@@ -125,6 +137,21 @@
                 <div class="modal-actions">
                     <button class="btn btn-secondary" id="cancel-add">Cancel</button>
                     <button class="btn btn-primary" id="save-add">Add Exercise</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Full History Modal -->
+        <div id="full-history-modal" class="modal hidden">
+            <div class="modal-content full-history-content">
+                <header class="full-history-header">
+                    <button class="back-btn" id="back-to-edit">←</button>
+                    <h2 id="full-history-exercise-name">Exercise History</h2>
+                    <div class="spacer"></div>
+                </header>
+                
+                <div id="full-history-list" class="full-history-list">
+                    <!-- All history entries will be populated dynamically -->
                 </div>
             </div>
         </div>

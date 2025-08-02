@@ -362,6 +362,178 @@ body {
     background-color: var(--bg-primary);
 }
 
+/* Exercise History */
+.history-section {
+    margin-top: 1.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--border-color);
+}
+
+.history-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+}
+
+.history-section label {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    margin: 0;
+}
+
+.btn-link {
+    background: none;
+    border: none;
+    color: var(--accent-primary);
+    font-size: 0.9rem;
+    cursor: pointer;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    transition: var(--transition);
+}
+
+.btn-link:hover {
+    background-color: rgba(0, 122, 255, 0.1);
+}
+
+.history-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.history-entry {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    background-color: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    font-size: 0.95rem;
+}
+
+.history-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex: 1;
+}
+
+.history-actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-left: 1rem;
+}
+
+.history-btn {
+    background: none;
+    border: none;
+    padding: 0.25rem;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: var(--transition);
+    min-width: 28px;
+    min-height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.history-btn:hover {
+    background-color: var(--bg-secondary);
+}
+
+.edit-btn:hover {
+    background-color: rgba(0, 122, 255, 0.2);
+}
+
+.delete-btn:hover {
+    background-color: rgba(255, 59, 48, 0.2);
+}
+
+.history-edit-input {
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--accent-primary);
+    border-radius: 4px;
+    color: var(--text-primary);
+    padding: 0.25rem 0.5rem;
+    font-size: 0.95rem;
+    font-weight: 600;
+    width: 80px;
+}
+
+.history-entry.current {
+    border-color: var(--accent-secondary);
+    background-color: rgba(52, 199, 89, 0.1);
+}
+
+.history-value {
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.history-date {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+.history-entry.current .history-value {
+    color: var(--accent-secondary);
+}
+
+/* Full History Modal */
+.full-history-content {
+    width: 100%;
+    max-width: 500px;
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.full-history-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.full-history-header h2 {
+    font-size: 1.3rem;
+    font-weight: 600;
+    margin: 0;
+}
+
+.full-history-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    overflow-y: auto;
+    max-height: 60vh;
+    padding-right: 0.5rem;
+}
+
+.full-history-list::-webkit-scrollbar {
+    width: 6px;
+}
+
+.full-history-list::-webkit-scrollbar-track {
+    background: var(--bg-primary);
+    border-radius: 3px;
+}
+
+.full-history-list::-webkit-scrollbar-thumb {
+    background: var(--border-color);
+    border-radius: 3px;
+}
+
+.full-history-list::-webkit-scrollbar-thumb:hover {
+    background: var(--text-secondary);
+}
+
 /* Responsive Design */
 @media (max-width: 480px) {
     .screen {
