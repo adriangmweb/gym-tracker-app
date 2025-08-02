@@ -1,0 +1,23 @@
+{
+  "name": "gym-tracker-pwa",
+  "version": "1.0.0",
+  "description": "A Progressive Web App for tracking gym exercises and weights",
+  "main": "index.html",
+  "scripts": {
+    "start": "python3 server.py",
+    "dev": "python3 server.py",
+    "build": "echo 'Static PWA - no build step required'",
+    "deploy": "vercel --prod"
+  },
+  "keywords": [
+    "pwa",
+    "gym",
+    "fitness",
+    "tracker",
+    "offline"
+  ],
+  "author": "Adrian & Elena",
+  "license": "MIT",
+  "devDependencies": {},
+  "dependencies": {}
+}

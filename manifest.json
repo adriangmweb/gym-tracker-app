@@ -1,0 +1,28 @@
+{
+    "name": "Gym Tracker",
+    "short_name": "GymTracker",
+    "description": "Track your gym exercises and weights",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#1a1a1a",
+    "theme_color": "#1a1a1a",
+    "orientation": "portrait",
+    "icons": [
+        {
+            "src": "icons/icon-192x192.svg",
+            "sizes": "192x192",
+            "type": "image/svg+xml",
+            "purpose": "maskable any"
+        },
+        {
+            "src": "icons/icon-512x512.svg",
+            "sizes": "512x512",
+            "type": "image/svg+xml",
+            "purpose": "maskable any"
+        }
+    ],
+    "categories": ["health", "fitness", "lifestyle"],
+    "lang": "en",
+    "scope": "/",
+    "prefer_related_applications": false
+}
