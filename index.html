@@ -30,6 +30,7 @@
         <!-- Main Screen -->
         <div id="main-screen" class="screen hidden">
             <header class="main-header">
+                <button class="settings-btn" id="settings-btn" title="Settings">⚙️</button>
                 <h1>Gym Tracker</h1>
                 <p>Select your profile</p>
             </header>
@@ -43,6 +44,45 @@
                     <div class="profile-icon">A</div>
                     <span>Adri</span>
                 </button>
+            </div>
+        </div>
+
+        <!-- Settings Screen -->
+        <div id="settings-screen" class="screen hidden">
+            <header class="header">
+                <button class="back-btn" id="back-to-main-settings">←</button>
+                <h1>Settings</h1>
+                <div class="spacer"></div>
+            </header>
+            
+            <div class="settings-list">
+                <button class="settings-item-btn" id="export-data-btn">
+                    <div class="settings-item-icon">📤</div>
+                    <div class="settings-item-content">
+                        <div class="settings-item-title">Export Data</div>
+                        <div class="settings-item-subtitle">Backup your exercise data</div>
+                    </div>
+                    <div class="chevron">→</div>
+                </button>
+                
+                <button class="settings-item-btn" id="import-data-btn">
+                    <div class="settings-item-icon">📥</div>
+                    <div class="settings-item-content">
+                        <div class="settings-item-title">Import Data</div>
+                        <div class="settings-item-subtitle">Restore from backup</div>
+                    </div>
+                    <div class="chevron">→</div>
+                </button>
+                
+                <div class="settings-info">
+                    <h3>💡 Backup Tips</h3>
+                    <ul>
+                        <li><strong>Regular backups:</strong> Export your data weekly to prevent loss</li>
+                        <li><strong>Multiple locations:</strong> Save to iCloud Drive, Google Drive, or send via WhatsApp</li>
+                        <li><strong>Before updates:</strong> Always backup before major app updates</li>
+                        <li><strong>Easy sharing:</strong> Use export to share data between devices</li>
+                    </ul>
+                </div>
             </div>
         </div>
 
@@ -158,6 +198,48 @@
                 
                 <div id="full-history-list" class="full-history-list">
                     <!-- All history entries will be populated dynamically -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Import Modal -->
+        <div id="import-modal" class="modal hidden">
+            <div class="modal-content">
+                <h2>Import Data</h2>
+                <p class="modal-subtitle">Choose how to import your backup:</p>
+                
+                <div class="import-options">
+                    <div class="input-group">
+                        <label for="import-file">Import from File</label>
+                        <input type="file" id="import-file" accept=".json" style="display: none;">
+                        <button class="btn btn-secondary" id="select-file-btn">Select Backup File</button>
+                    </div>
+                    
+                    <div class="import-divider">
+                        <span>OR</span>
+                    </div>
+                    
+                    <div class="input-group">
+                        <label for="clipboard-import">Import from Clipboard</label>
+                        <button class="btn btn-secondary" id="clipboard-import-btn">Paste from Clipboard</button>
+                    </div>
+                </div>
+                
+                <div class="modal-actions">
+                    <button class="btn btn-secondary" id="cancel-import">Cancel</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Import Result Modal -->
+        <div id="import-result-modal" class="modal hidden">
+            <div class="modal-content">
+                <h2>Import Complete!</h2>
+                <div id="import-summary" class="import-summary">
+                    <!-- Summary will be populated here -->
+                </div>
+                <div class="modal-actions">
+                    <button class="btn btn-primary" id="close-import-result">Done</button>
                 </div>
             </div>
         </div>

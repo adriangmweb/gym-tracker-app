@@ -293,6 +293,57 @@ class GymTracker {
         document.getElementById('edit-muscle-group-btn').addEventListener('click', () => {
             this.editMuscleGroupName(this.currentMuscleGroup);
         });
+
+        // Settings navigation
+        document.getElementById('settings-btn').addEventListener('click', () => {
+            this.showScreen('settings');
+        });
+
+        document.getElementById('back-to-main-settings').addEventListener('click', () => {
+            this.showScreen('main');
+        });
+
+        // Export/Import functionality
+        document.getElementById('export-data-btn').addEventListener('click', () => {
+            this.exportData();
+        });
+
+        document.getElementById('import-data-btn').addEventListener('click', () => {
+            this.showImportModal();
+        });
+
+        document.getElementById('cancel-import').addEventListener('click', () => {
+            this.hideImportModal();
+        });
+
+        document.getElementById('select-file-btn').addEventListener('click', () => {
+            document.getElementById('import-file').click();
+        });
+
+        document.getElementById('import-file').addEventListener('change', (e) => {
+            this.importFromFile(e.target.files[0]);
+        });
+
+        document.getElementById('clipboard-import-btn').addEventListener('click', () => {
+            this.importFromClipboard();
+        });
+
+        document.getElementById('close-import-result').addEventListener('click', () => {
+            this.hideImportResultModal();
+        });
+
+        // Close import modal on backdrop click
+        document.getElementById('import-modal').addEventListener('click', (e) => {
+            if (e.target === e.currentTarget) {
+                this.hideImportModal();
+            }
+        });
+
+        document.getElementById('import-result-modal').addEventListener('click', (e) => {
+            if (e.target === e.currentTarget) {
+                this.hideImportResultModal();
+            }
+        });
     }
 
     // Navigation
@@ -800,6 +851,299 @@ class GymTracker {
         this.saveData();
         this.renderExercises();
         this.hideAddModal();
+    }
+
+    // Backup & Import functionality
+    async exportData() {
+        try {
+            // Create export data structure according to specs
+            const exportData = {
+                exportDate: new Date().toISOString(),
+                version: "1.0",
+                users: {}
+            };
+
+            // Ensure we have data to export
+            if (!this.data.profiles || Object.keys(this.data.profiles).length === 0) {
+                alert('No data to export. Please add some exercises first.');
+                return;
+            }
+
+            // Convert internal data structure to export format
+            Object.entries(this.data.profiles).forEach(([profileKey, profile]) => {
+                const userName = profile.name;
+                exportData.users[userName] = {};
+                
+                if (profile.exercises) {
+                    Object.entries(profile.exercises).forEach(([muscleGroup, exercises]) => {
+                        const muscleGroupName = this.data.muscleGroupNames ? 
+                            this.data.muscleGroupNames[muscleGroup] : this.capitalize(muscleGroup);
+                        
+                        exportData.users[userName][muscleGroupName] = {};
+                        
+                        Object.entries(exercises).forEach(([exerciseName, exerciseData]) => {
+                            const currentValue = this.getCurrentValue(exerciseData);
+                            const lastModified = exerciseData.history && exerciseData.history.length > 0 ? 
+                                exerciseData.history[0].date : new Date().toISOString();
+                            
+                            exportData.users[userName][muscleGroupName][exerciseName] = {
+                                value: currentValue,
+                                lastModified: lastModified,
+                                history: exerciseData.history || []
+                            };
+                        });
+                    });
+                }
+            });
+
+            const jsonString = JSON.stringify(exportData, null, 2);
+            const fileName = `gym-tracker-backup-${new Date().toISOString().split('T')[0]}.json`;
+
+            console.log('Export data prepared:', exportData);
+
+            // Try Web Share API first (for mobile) - with better error handling
+            if (navigator.share && navigator.canShare) {
+                try {
+                    const file = new File([jsonString], fileName, { type: 'application/json' });
+                    
+                    if (navigator.canShare({ files: [file] })) {
+                        await navigator.share({
+                            files: [file],
+                            title: 'Gym Tracker Backup',
+                            text: 'Export of your gym exercise data'
+                        });
+                        return;
+                    }
+                } catch (shareError) {
+                    console.log('Web Share API failed, falling back to download:', shareError);
+                    // Continue to fallback download
+                }
+            }
+
+            // Fallback: Direct download
+            try {
+                const blob = new Blob([jsonString], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = fileName;
+                a.style.display = 'none';
+                document.body.appendChild(a);
+                a.click();
+                
+                // Clean up
+                setTimeout(() => {
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                }, 100);
+
+                alert('Backup created successfully!');
+            } catch (downloadError) {
+                console.error('Download fallback failed:', downloadError);
+                // Last resort: copy to clipboard
+                try {
+                    await navigator.clipboard.writeText(jsonString);
+                    alert('Export failed to download. Backup data has been copied to your clipboard instead. You can paste it into a text file and save it manually.');
+                } catch (clipboardError) {
+                    console.error('Clipboard fallback failed:', clipboardError);
+                    alert('Export failed. Please try again or contact support.');
+                }
+            }
+        } catch (error) {
+            console.error('Export error:', error);
+            alert('Failed to create backup. Please try again.');
+        }
+    }
+
+    showImportModal() {
+        document.getElementById('import-modal').classList.remove('hidden');
+    }
+
+    hideImportModal() {
+        document.getElementById('import-modal').classList.add('hidden');
+        // Reset file input
+        document.getElementById('import-file').value = '';
+    }
+
+    showImportResultModal() {
+        document.getElementById('import-result-modal').classList.remove('hidden');
+    }
+
+    hideImportResultModal() {
+        document.getElementById('import-result-modal').classList.add('hidden');
+        this.hideImportModal();
+    }
+
+    async importFromFile(file) {
+        if (!file) return;
+        
+        try {
+            const text = await file.text();
+            const importData = JSON.parse(text);
+            this.processImportData(importData);
+        } catch (error) {
+            console.error('File import error:', error);
+            alert('Invalid backup file. Please check the file format and try again.');
+        }
+    }
+
+    async importFromClipboard() {
+        try {
+            const text = await navigator.clipboard.readText();
+            const importData = JSON.parse(text);
+            this.processImportData(importData);
+        } catch (error) {
+            console.error('Clipboard import error:', error);
+            alert('Invalid JSON data in clipboard. Please copy a valid backup and try again.');
+        }
+    }
+
+    processImportData(importData) {
+        // Validate import data structure
+        if (!this.validateImportData(importData)) {
+            alert('Invalid backup data format. Please check your backup file.');
+            return;
+        }
+
+        const mergeResult = this.mergeImportData(importData);
+        this.saveData();
+        this.showImportSummary(mergeResult);
+        this.renderExercises(); // Refresh current view if needed
+    }
+
+    validateImportData(importData) {
+        try {
+            // Check required fields
+            if (!importData.users || typeof importData.users !== 'object') {
+                return false;
+            }
+
+            // Validate structure
+            for (const [userName, userData] of Object.entries(importData.users)) {
+                if (typeof userData !== 'object') return false;
+                
+                for (const [muscleGroup, exercises] of Object.entries(userData)) {
+                    if (typeof exercises !== 'object') return false;
+                    
+                    for (const [exerciseName, exerciseData] of Object.entries(exercises)) {
+                        if (!exerciseData.value || !exerciseData.lastModified) {
+                            return false;
+                        }
+                    }
+                }
+            }
+            
+            return true;
+        } catch (error) {
+            return false;
+        }
+    }
+
+    mergeImportData(importData) {
+        const result = {
+            added: 0,
+            updated: 0,
+            unchanged: 0
+        };
+
+        // Convert import data back to internal format
+        Object.entries(importData.users).forEach(([userName, userData]) => {
+            // Find matching profile by name
+            let profileKey = null;
+            Object.entries(this.data.profiles).forEach(([key, profile]) => {
+                if (profile.name === userName) {
+                    profileKey = key;
+                }
+            });
+
+            if (!profileKey) {
+                // Create new profile if it doesn't exist
+                profileKey = userName.toLowerCase();
+                this.data.profiles[profileKey] = {
+                    name: userName,
+                    exercises: {}
+                };
+            }
+
+            Object.entries(userData).forEach(([muscleGroupName, exercises]) => {
+                // Find matching muscle group key
+                let muscleGroupKey = null;
+                Object.entries(this.data.muscleGroupNames || {}).forEach(([key, name]) => {
+                    if (name === muscleGroupName) {
+                        muscleGroupKey = key;
+                    }
+                });
+
+                // Fallback: use lowercase version of muscle group name
+                if (!muscleGroupKey) {
+                    muscleGroupKey = muscleGroupName.toLowerCase();
+                    if (!this.data.muscleGroupNames) {
+                        this.data.muscleGroupNames = {};
+                    }
+                    this.data.muscleGroupNames[muscleGroupKey] = muscleGroupName;
+                }
+
+                if (!this.data.profiles[profileKey].exercises[muscleGroupKey]) {
+                    this.data.profiles[profileKey].exercises[muscleGroupKey] = {};
+                }
+
+                Object.entries(exercises).forEach(([exerciseName, exerciseData]) => {
+                    const existingExercise = this.data.profiles[profileKey].exercises[muscleGroupKey][exerciseName];
+                    
+                    if (!existingExercise) {
+                        // New exercise
+                        this.data.profiles[profileKey].exercises[muscleGroupKey][exerciseName] = {
+                            history: exerciseData.history || [{
+                                value: exerciseData.value,
+                                date: exerciseData.lastModified
+                            }]
+                        };
+                        result.added++;
+                    } else {
+                        // Existing exercise - merge with smart strategy
+                        const currentValue = this.getCurrentValue(existingExercise);
+                        const importValue = exerciseData.value;
+                        
+                        // Compare weights (extract numbers for comparison)
+                        const currentWeight = parseFloat(currentValue.replace(/[^\d.]/g, '')) || 0;
+                        const importWeight = parseFloat(importValue.replace(/[^\d.]/g, '')) || 0;
+                        
+                        if (importWeight > currentWeight) {
+                            // Import has higher weight - add to history
+                            const newEntry = {
+                                value: importValue,
+                                date: exerciseData.lastModified
+                            };
+                            existingExercise.history.unshift(newEntry);
+                            result.updated++;
+                        } else {
+                            result.unchanged++;
+                        }
+                    }
+                });
+            });
+        });
+
+        return result;
+    }
+
+    showImportSummary(result) {
+        const summaryElement = document.getElementById('import-summary');
+        summaryElement.innerHTML = `
+            <div class="import-summary-item">
+                <span class="import-summary-icon">✅</span>
+                <span>Added ${result.added} new exercises</span>
+            </div>
+            <div class="import-summary-item">
+                <span class="import-summary-icon">✅</span>
+                <span>Updated ${result.updated} exercises with higher weights</span>
+            </div>
+            <div class="import-summary-item">
+                <span class="import-summary-icon">ℹ️</span>
+                <span>Kept ${result.unchanged} existing exercises unchanged</span>
+            </div>
+        `;
+        this.showImportResultModal();
     }
 
     // Utility functions

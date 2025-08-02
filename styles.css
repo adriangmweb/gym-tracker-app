@@ -640,3 +640,174 @@ body {
     min-width: 44px;
     min-height: 44px;
 }
+
+/* Settings */
+.settings-btn {
+    position: absolute;
+    top: 2rem;
+    right: 20px;
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 1.5rem;
+    padding: 8px;
+    cursor: pointer;
+    border-radius: 50%;
+    transition: var(--transition);
+    min-width: 44px;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.settings-btn:hover {
+    background-color: var(--bg-secondary);
+    color: var(--accent-primary);
+}
+
+.settings-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.settings-item-btn {
+    display: flex;
+    align-items: center;
+    padding: 1.25rem 1.5rem;
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: var(--transition);
+    box-shadow: var(--shadow);
+    min-height: 60px;
+}
+
+.settings-item-btn:hover {
+    background-color: var(--bg-tertiary);
+    transform: translateY(-1px);
+}
+
+.settings-item-icon {
+    font-size: 1.5rem;
+    margin-right: 1rem;
+    min-width: 32px;
+    text-align: center;
+}
+
+.settings-item-content {
+    flex: 1;
+}
+
+.settings-item-title {
+    font-size: 1.1rem;
+    font-weight: 500;
+    margin-bottom: 0.25rem;
+}
+
+.settings-item-subtitle {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+}
+
+/* Import Modal */
+.modal-subtitle {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    margin-bottom: 1.5rem;
+    text-align: center;
+}
+
+.import-options {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.import-divider {
+    display: flex;
+    align-items: center;
+    text-align: center;
+    margin: 1rem 0;
+}
+
+.import-divider::before,
+.import-divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border-color);
+}
+
+.import-divider span {
+    padding: 0 1rem;
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+}
+
+.import-summary {
+    background-color: var(--bg-tertiary);
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.import-summary-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+    font-size: 0.95rem;
+}
+
+.import-summary-item:last-child {
+    margin-bottom: 0;
+}
+
+.import-summary-icon {
+    font-size: 1rem;
+}
+
+.settings-btn,
+.settings-item-btn {
+    min-height: 60px;
+}
+
+.settings-info {
+    background-color: var(--bg-tertiary);
+    border-radius: var(--border-radius);
+    padding: 1.5rem;
+    margin-top: 2rem;
+}
+
+.settings-info h3 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+    color: var(--text-primary);
+}
+
+.settings-info ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.settings-info li {
+    margin-bottom: 0.75rem;
+    font-size: 0.9rem;
+    line-height: 1.4;
+    color: var(--text-secondary);
+}
+
+.settings-info li:last-child {
+    margin-bottom: 0;
+}
+
+.settings-info strong {
+    color: var(--text-primary);
+}
