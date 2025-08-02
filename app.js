@@ -31,6 +31,14 @@ class GymTracker {
     initializeData() {
         if (!this.data.profiles) {
             this.data = {
+                muscleGroupNames: {
+                    back: 'Back',
+                    biceps: 'Biceps', 
+                    legs: 'Legs',
+                    triceps: 'Triceps',
+                    shoulders: 'Shoulders',
+                    chest: 'Chest'
+                },
                 profiles: {
                     elena: {
                         name: 'Elena',
@@ -125,7 +133,21 @@ class GymTracker {
     loadData() {
         try {
             const data = localStorage.getItem('gymTrackerData');
-            return data ? JSON.parse(data) : {};
+            const parsed = data ? JSON.parse(data) : {};
+            
+            // Backward compatibility: add muscleGroupNames if missing
+            if (parsed.profiles && !parsed.muscleGroupNames) {
+                parsed.muscleGroupNames = {
+                    back: 'Back',
+                    biceps: 'Biceps', 
+                    legs: 'Legs',
+                    triceps: 'Triceps',
+                    shoulders: 'Shoulders',
+                    chest: 'Chest'
+                };
+            }
+            
+            return parsed;
         } catch (error) {
             console.error('Error loading data:', error);
             return {};
@@ -178,6 +200,7 @@ class GymTracker {
         });
 
         document.getElementById('back-to-groups').addEventListener('click', () => {
+            this.updateMuscleGroupButtons();
             this.showScreen('muscle-groups');
         });
 
@@ -265,6 +288,11 @@ class GymTracker {
         document.getElementById('edit-name-btn').addEventListener('click', () => {
             this.editExerciseName(this.currentExercise);
         });
+
+        // Edit muscle group name
+        document.getElementById('edit-muscle-group-btn').addEventListener('click', () => {
+            this.editMuscleGroupName(this.currentMuscleGroup);
+        });
     }
 
     // Navigation
@@ -279,12 +307,14 @@ class GymTracker {
         this.currentProfile = profileKey;
         const profile = this.data.profiles[profileKey];
         document.getElementById('profile-title').textContent = profile.name;
+        this.updateMuscleGroupButtons();
         this.showScreen('muscle-groups');
     }
 
     selectMuscleGroup(group) {
         this.currentMuscleGroup = group;
-        document.getElementById('muscle-group-title').textContent = this.capitalize(group);
+        const displayName = this.data.muscleGroupNames ? this.data.muscleGroupNames[group] : this.capitalize(group);
+        document.getElementById('muscle-group-title').textContent = displayName;
         this.renderExercises();
         this.showScreen('exercises');
     }
@@ -403,6 +433,86 @@ class GymTracker {
                 nameElement.style.display = 'block';
                 input.remove();
             }
+        });
+    }
+
+    editMuscleGroupName(muscleGroupKey) {
+        const titleElement = document.getElementById('muscle-group-title');
+        if (!titleElement) return;
+        
+        // Ensure muscleGroupNames exists
+        if (!this.data.muscleGroupNames) {
+            this.data.muscleGroupNames = {
+                back: 'Back',
+                biceps: 'Biceps', 
+                legs: 'Legs',
+                triceps: 'Triceps',
+                shoulders: 'Shoulders',
+                chest: 'Chest'
+            };
+        }
+        
+        const currentName = this.data.muscleGroupNames[muscleGroupKey] || this.capitalize(muscleGroupKey);
+        
+        // Create inline input
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.value = currentName;
+        input.className = 'muscle-group-name-input';
+        
+        // Replace title with input
+        titleElement.style.display = 'none';
+        titleElement.parentNode.insertBefore(input, titleElement);
+        input.focus();
+        input.select();
+        
+        // Save on blur or enter
+        const saveEdit = () => {
+            const newName = input.value.trim();
+            if (!newName) {
+                alert('Muscle group name cannot be empty');
+                input.focus();
+                return;
+            }
+            
+            if (newName === currentName) {
+                // No change, just restore
+                titleElement.style.display = 'block';
+                input.remove();
+                return;
+            }
+            
+            // Update muscle group name
+            this.data.muscleGroupNames[muscleGroupKey] = newName;
+            
+            // Update title
+            titleElement.textContent = newName;
+            titleElement.style.display = 'block';
+            input.remove();
+            
+            // Save and update muscle groups screen if needed
+            this.saveData();
+            this.updateMuscleGroupButtons();
+        };
+        
+        input.addEventListener('blur', saveEdit);
+        input.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                saveEdit();
+            } else if (e.key === 'Escape') {
+                titleElement.style.display = 'block';
+                input.remove();
+            }
+        });
+    }
+
+    updateMuscleGroupButtons() {
+        // Update muscle group buttons with custom names
+        const buttons = document.querySelectorAll('.muscle-group-btn');
+        buttons.forEach(btn => {
+            const group = btn.dataset.group;
+            const displayName = this.data.muscleGroupNames ? this.data.muscleGroupNames[group] : this.capitalize(group);
+            btn.querySelector('span').textContent = displayName;
         });
     }
 
