@@ -180,6 +180,39 @@ class GymTracker {
                 this.saveExercise();
             }
         });
+
+        // Add exercise events
+        document.getElementById('add-exercise-btn').addEventListener('click', () => {
+            this.showAddModal();
+        });
+
+        document.getElementById('cancel-add').addEventListener('click', () => {
+            this.hideAddModal();
+        });
+
+        document.getElementById('save-add').addEventListener('click', () => {
+            this.addNewExercise();
+        });
+
+        // Close add modal on backdrop click
+        document.getElementById('add-modal').addEventListener('click', (e) => {
+            if (e.target === e.currentTarget) {
+                this.hideAddModal();
+            }
+        });
+
+        // Enter key in add modal inputs
+        document.getElementById('new-exercise-name').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                document.getElementById('new-exercise-value').focus();
+            }
+        });
+
+        document.getElementById('new-exercise-value').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                this.addNewExercise();
+            }
+        });
     }
 
     // Navigation
@@ -264,6 +297,62 @@ class GymTracker {
 
     hideModal() {
         document.getElementById('edit-modal').classList.add('hidden');
+    }
+
+    showAddModal() {
+        document.getElementById('new-exercise-name').value = '';
+        document.getElementById('new-exercise-value').value = '';
+        document.getElementById('add-modal').classList.remove('hidden');
+        
+        // Focus on name input
+        setTimeout(() => {
+            document.getElementById('new-exercise-name').focus();
+        }, 100);
+    }
+
+    hideAddModal() {
+        document.getElementById('add-modal').classList.add('hidden');
+    }
+
+    addNewExercise() {
+        const exerciseName = document.getElementById('new-exercise-name').value.trim();
+        const exerciseValue = document.getElementById('new-exercise-value').value.trim();
+
+        // Validation
+        if (!exerciseName) {
+            alert('Please enter an exercise name');
+            document.getElementById('new-exercise-name').focus();
+            return;
+        }
+
+        if (!exerciseValue) {
+            alert('Please enter an initial weight/value');
+            document.getElementById('new-exercise-value').focus();
+            return;
+        }
+
+        // Check for duplicate exercise names
+        const exercises = this.data.profiles[this.currentProfile].exercises[this.currentMuscleGroup] || {};
+        if (exercises[exerciseName]) {
+            alert('An exercise with this name already exists');
+            document.getElementById('new-exercise-name').focus();
+            return;
+        }
+
+        // Add the new exercise
+        if (!this.data.profiles[this.currentProfile].exercises[this.currentMuscleGroup]) {
+            this.data.profiles[this.currentProfile].exercises[this.currentMuscleGroup] = {};
+        }
+
+        this.data.profiles[this.currentProfile].exercises[this.currentMuscleGroup][exerciseName] = {
+            value: exerciseValue,
+            lastModified: new Date().toISOString()
+        };
+
+        // Save and refresh
+        this.saveData();
+        this.renderExercises();
+        this.hideAddModal();
     }
 
     // Utility functions
