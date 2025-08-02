@@ -369,11 +369,32 @@ body {
     border-top: 1px solid var(--border-color);
 }
 
+.history-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+}
+
 .history-section label {
-    display: block;
     font-size: 0.9rem;
     color: var(--text-secondary);
-    margin-bottom: 0.75rem;
+    margin: 0;
+}
+
+.btn-link {
+    background: none;
+    border: none;
+    color: var(--accent-primary);
+    font-size: 0.9rem;
+    cursor: pointer;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    transition: var(--transition);
+}
+
+.btn-link:hover {
+    background-color: rgba(0, 122, 255, 0.1);
 }
 
 .history-list {
@@ -461,6 +482,56 @@ body {
 
 .history-entry.current .history-value {
     color: var(--accent-secondary);
+}
+
+/* Full History Modal */
+.full-history-content {
+    width: 100%;
+    max-width: 500px;
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.full-history-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.full-history-header h2 {
+    font-size: 1.3rem;
+    font-weight: 600;
+    margin: 0;
+}
+
+.full-history-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    overflow-y: auto;
+    max-height: 60vh;
+    padding-right: 0.5rem;
+}
+
+.full-history-list::-webkit-scrollbar {
+    width: 6px;
+}
+
+.full-history-list::-webkit-scrollbar-track {
+    background: var(--bg-primary);
+    border-radius: 3px;
+}
+
+.full-history-list::-webkit-scrollbar-thumb {
+    background: var(--border-color);
+    border-radius: 3px;
+}
+
+.full-history-list::-webkit-scrollbar-thumb:hover {
+    background: var(--text-secondary);
 }
 
 /* Responsive Design */

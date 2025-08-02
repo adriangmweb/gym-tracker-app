@@ -244,6 +244,22 @@ class GymTracker {
                 this.addNewExercise();
             }
         });
+
+        // Full history events
+        document.getElementById('see-all-history').addEventListener('click', () => {
+            this.showFullHistory();
+        });
+
+        document.getElementById('back-to-edit').addEventListener('click', () => {
+            this.hideFullHistory();
+        });
+
+        // Close full history modal on backdrop click
+        document.getElementById('full-history-modal').addEventListener('click', (e) => {
+            if (e.target === e.currentTarget) {
+                this.hideFullHistory();
+            }
+        });
     }
 
     // Navigation
@@ -399,6 +415,12 @@ class GymTracker {
             
             // Re-render to update current exercise display if needed
             this.renderExercises();
+            
+            // If full history is open, refresh it too
+            const fullHistoryModal = document.getElementById('full-history-modal');
+            if (!fullHistoryModal.classList.contains('hidden')) {
+                this.populateFullHistory();
+            }
         };
         
         input.addEventListener('blur', saveEdit);
@@ -475,6 +497,84 @@ class GymTracker {
 
     hideAddModal() {
         document.getElementById('add-modal').classList.add('hidden');
+    }
+
+    showFullHistory() {
+        const exerciseName = this.currentExercise;
+        document.getElementById('full-history-exercise-name').textContent = `${exerciseName} - Full History`;
+        this.populateFullHistory();
+        document.getElementById('full-history-modal').classList.remove('hidden');
+    }
+
+    hideFullHistory() {
+        document.getElementById('full-history-modal').classList.add('hidden');
+    }
+
+    populateFullHistory() {
+        const exercises = this.data.profiles[this.currentProfile].exercises[this.currentMuscleGroup];
+        const exercise = exercises[this.currentExercise];
+        const fullHistoryList = document.getElementById('full-history-list');
+        
+        fullHistoryList.innerHTML = '';
+        
+        if (exercise && exercise.history && exercise.history.length > 0) {
+            // Show all history in chronological order (oldest first, newest last)
+            const allHistory = [...exercise.history].reverse();
+            
+            allHistory.forEach((entry, index) => {
+                const originalIndex = exercise.history.length - 1 - index;
+                const isLatest = index === allHistory.length - 1;
+                
+                const historyEntry = document.createElement('div');
+                historyEntry.className = `history-entry ${isLatest ? 'current' : ''}`;
+                historyEntry.innerHTML = `
+                    <div class="history-content">
+                        <div class="history-value" data-index="${originalIndex}">${entry.value}</div>
+                        <div class="history-date">${this.formatDate(entry.date)}</div>
+                    </div>
+                    <div class="history-actions">
+                        <button class="history-btn edit-btn" data-index="${originalIndex}" title="Edit">✏️</button>
+                        <button class="history-btn delete-btn" data-index="${originalIndex}" title="Delete">🗑️</button>
+                    </div>
+                `;
+                
+                // Add event listeners for edit and delete
+                const editBtn = historyEntry.querySelector('.edit-btn');
+                const deleteBtn = historyEntry.querySelector('.delete-btn');
+                
+                editBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    this.editHistoryEntry(originalIndex);
+                });
+                
+                deleteBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    this.deleteHistoryEntryFromFullView(originalIndex);
+                });
+                
+                fullHistoryList.appendChild(historyEntry);
+            });
+        } else {
+            fullHistoryList.innerHTML = '<div class="history-entry"><div class="history-content"><div class="history-value">No history yet</div></div></div>';
+        }
+    }
+
+    deleteHistoryEntryFromFullView(historyIndex) {
+        const exercises = this.data.profiles[this.currentProfile].exercises[this.currentMuscleGroup];
+        const exercise = exercises[this.currentExercise];
+        
+        // Don't allow deleting if it's the only entry
+        if (exercise.history.length <= 1) {
+            alert('Cannot delete the only history entry. Add a new weight first.');
+            return;
+        }
+        
+        if (confirm('Delete this weight entry?')) {
+            exercise.history.splice(historyIndex, 1);
+            this.saveData();
+            this.populateFullHistory(); // Refresh full history
+            this.renderExercises(); // Update main exercise list
+        }
     }
 
     addNewExercise() {
