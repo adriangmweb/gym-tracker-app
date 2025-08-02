@@ -328,15 +328,105 @@ class GymTracker {
             chronological.forEach((entry, index) => {
                 const historyEntry = document.createElement('div');
                 const isLatest = index === chronological.length - 1;
+                const originalIndex = lastThree.length - 1 - index; // Get original index in history array
+                
                 historyEntry.className = `history-entry ${isLatest ? 'current' : ''}`;
                 historyEntry.innerHTML = `
-                    <div class="history-value">${entry.value}</div>
-                    <div class="history-date">${this.formatDate(entry.date)}</div>
+                    <div class="history-content">
+                        <div class="history-value" data-index="${originalIndex}">${entry.value}</div>
+                        <div class="history-date">${this.formatDate(entry.date)}</div>
+                    </div>
+                    <div class="history-actions">
+                        <button class="history-btn edit-btn" data-index="${originalIndex}" title="Edit">✏️</button>
+                        <button class="history-btn delete-btn" data-index="${originalIndex}" title="Delete">🗑️</button>
+                    </div>
                 `;
+                
+                // Add event listeners for edit and delete
+                const editBtn = historyEntry.querySelector('.edit-btn');
+                const deleteBtn = historyEntry.querySelector('.delete-btn');
+                
+                editBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    this.editHistoryEntry(originalIndex);
+                });
+                
+                deleteBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    this.deleteHistoryEntry(originalIndex);
+                });
+                
                 historyList.appendChild(historyEntry);
             });
         } else {
             historyList.innerHTML = '<div class="history-entry"><div class="history-value">No history yet</div></div>';
+        }
+    }
+
+    editHistoryEntry(historyIndex) {
+        const exercises = this.data.profiles[this.currentProfile].exercises[this.currentMuscleGroup];
+        const exercise = exercises[this.currentExercise];
+        const entry = exercise.history[historyIndex];
+        
+        const valueElement = document.querySelector(`[data-index="${historyIndex}"]`);
+        const currentValue = entry.value;
+        
+        // Create inline input
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.value = currentValue;
+        input.className = 'history-edit-input';
+        
+        // Replace value with input
+        valueElement.style.display = 'none';
+        valueElement.parentNode.insertBefore(input, valueElement);
+        input.focus();
+        input.select();
+        
+        // Save on blur or enter
+        const saveEdit = () => {
+            const newValue = input.value.trim();
+            if (newValue && newValue !== currentValue) {
+                exercise.history[historyIndex].value = newValue;
+                exercise.history[historyIndex].date = new Date().toISOString();
+                this.saveData();
+            }
+            
+            // Restore display
+            valueElement.textContent = newValue || currentValue;
+            valueElement.style.display = 'block';
+            input.remove();
+            
+            // Re-render to update current exercise display if needed
+            this.renderExercises();
+        };
+        
+        input.addEventListener('blur', saveEdit);
+        input.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                saveEdit();
+            } else if (e.key === 'Escape') {
+                valueElement.style.display = 'block';
+                input.remove();
+            }
+        });
+    }
+
+    deleteHistoryEntry(historyIndex) {
+        const exercises = this.data.profiles[this.currentProfile].exercises[this.currentMuscleGroup];
+        const exercise = exercises[this.currentExercise];
+        
+        // Don't allow deleting if it's the only entry
+        if (exercise.history.length <= 1) {
+            alert('Cannot delete the only history entry. Add a new weight first.');
+            return;
+        }
+        
+        if (confirm('Delete this weight entry?')) {
+            exercise.history.splice(historyIndex, 1);
+            this.saveData();
+            this.populateHistory(this.currentExercise);
+            this.renderExercises();
         }
     }
 
