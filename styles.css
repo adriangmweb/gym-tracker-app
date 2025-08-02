@@ -364,7 +364,9 @@ body {
 
 /* Exercise History */
 .history-section {
-    margin-bottom: 1.5rem;
+    margin-top: 1.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--border-color);
 }
 
 .history-section label {
@@ -391,9 +393,9 @@ body {
     font-size: 0.95rem;
 }
 
-.history-entry:first-child {
-    border-color: var(--accent-primary);
-    background-color: rgba(0, 122, 255, 0.1);
+.history-entry.current {
+    border-color: var(--accent-secondary);
+    background-color: rgba(52, 199, 89, 0.1);
 }
 
 .history-value {
@@ -406,8 +408,8 @@ body {
     color: var(--text-secondary);
 }
 
-.history-entry:first-child .history-value {
-    color: var(--accent-primary);
+.history-entry.current .history-value {
+    color: var(--accent-secondary);
 }
 
 /* Responsive Design */

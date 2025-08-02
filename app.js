@@ -322,10 +322,13 @@ class GymTracker {
         
         if (exercise && exercise.history && exercise.history.length > 0) {
             const lastThree = this.getLastThreeWeights(exercise);
+            // Reverse to show oldest first, newest last (chronological order)
+            const chronological = [...lastThree].reverse();
             
-            lastThree.forEach((entry, index) => {
+            chronological.forEach((entry, index) => {
                 const historyEntry = document.createElement('div');
-                historyEntry.className = 'history-entry';
+                const isLatest = index === chronological.length - 1;
+                historyEntry.className = `history-entry ${isLatest ? 'current' : ''}`;
                 historyEntry.innerHTML = `
                     <div class="history-value">${entry.value}</div>
                     <div class="history-date">${this.formatDate(entry.date)}</div>
