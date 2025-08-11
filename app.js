@@ -344,6 +344,11 @@ class GymTracker {
                 this.hideImportResultModal();
             }
         });
+
+        // Switch user button
+        document.getElementById('switch-user-btn').addEventListener('click', () => {
+            this.switchUser();
+        });
     }
 
     // Navigation
@@ -359,6 +364,7 @@ class GymTracker {
         const profile = this.data.profiles[profileKey];
         document.getElementById('profile-title').textContent = profile.name;
         this.updateMuscleGroupButtons();
+        this.updateUserSwitchButton();
         this.showScreen('muscle-groups');
     }
 
@@ -565,6 +571,31 @@ class GymTracker {
             const displayName = this.data.muscleGroupNames ? this.data.muscleGroupNames[group] : this.capitalize(group);
             btn.querySelector('span').textContent = displayName;
         });
+    }
+
+    switchUser() {
+        // Get all available profiles
+        const profileKeys = Object.keys(this.data.profiles);
+        const currentIndex = profileKeys.indexOf(this.currentProfile);
+        const nextIndex = (currentIndex + 1) % profileKeys.length;
+        const nextProfile = profileKeys[nextIndex];
+        
+        // Switch to the next profile while staying on the same muscle group
+        const currentMuscleGroup = this.currentMuscleGroup;
+        this.selectProfile(nextProfile);
+        
+        // If we were on the exercises screen, go back to the same muscle group
+        if (currentMuscleGroup && this.data.profiles[nextProfile].exercises[currentMuscleGroup]) {
+            this.selectMuscleGroup(currentMuscleGroup);
+        }
+    }
+
+    updateUserSwitchButton() {
+        const userInitial = document.getElementById('current-user-initial');
+        if (userInitial && this.currentProfile) {
+            const profile = this.data.profiles[this.currentProfile];
+            userInitial.textContent = profile.name.charAt(0).toUpperCase();
+        }
     }
 
     populateHistory(exerciseName) {
