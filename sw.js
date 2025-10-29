@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'v1.0.1';
+const CACHE_VERSION = 'v1.1.0';
 const CACHE_NAME = `gym-tracker-${CACHE_VERSION}`;
 const urlsToCache = [
     '/',
@@ -15,9 +15,9 @@ self.addEventListener('install', event => {
     event.waitUntil(
         caches.open(CACHE_NAME)
             .then(cache => {
-                console.log('Opened cache');
                 return cache.addAll(urlsToCache);
             })
+            .then(() => self.skipWaiting())
     );
 });
 
@@ -25,30 +25,39 @@ self.addEventListener('install', event => {
 self.addEventListener('fetch', event => {
     // Only handle GET requests
     if (event.request.method !== 'GET') return;
-    
+
+    const request = event.request;
+
+    // Network-first for navigation to keep shell fresh
+    if (request.mode === 'navigate') {
+        event.respondWith(
+            fetch(request)
+                .then(response => {
+                    const responseClone = response.clone();
+                    caches.open(CACHE_NAME).then(cache => cache.put(request, responseClone));
+                    return response;
+                })
+                .catch(() => caches.match('/index.html'))
+        );
+        return;
+    }
+
+    // Stale-while-revalidate for other GETs
     event.respondWith(
-        fetch(event.request)
-            .then(response => {
-                // Network succeeded - update cache
-                const responseClone = response.clone();
-                caches.open(CACHE_NAME).then(cache => {
-                    cache.put(event.request, responseClone);
-                });
-                return response;
-            })
-            .catch(() => {
-                // Network failed - serve from cache
-                return caches.match(event.request)
-                    .then(cachedResponse => {
-                        if (cachedResponse) {
-                            return cachedResponse;
+        caches.open(CACHE_NAME).then(cache =>
+            cache.match(request).then(cachedResponse => {
+                const fetchPromise = fetch(request)
+                    .then(networkResponse => {
+                        if (networkResponse && networkResponse.status === 200 && new URL(request.url).origin === self.location.origin) {
+                            cache.put(request, networkResponse.clone());
                         }
-                        // Fallback for navigation requests - serve index.html
-                        if (event.request.mode === 'navigate') {
-                            return caches.match('/index.html');
-                        }
-                    });
+                        return networkResponse;
+                    })
+                    .catch(() => cachedResponse);
+
+                return cachedResponse || fetchPromise;
             })
+        )
     );
 });
 
@@ -58,12 +67,18 @@ self.addEventListener('activate', event => {
         caches.keys().then(cacheNames => {
             return Promise.all(
                 cacheNames.map(cacheName => {
-                    if (cacheName !== CACHE_NAME) {
-                        console.log('Deleting old cache:', cacheName);
+                    if (cacheName !== CACHE_NAME && cacheName.startsWith('gym-tracker-')) {
                         return caches.delete(cacheName);
                     }
                 })
             );
-        })
+        }).then(() => self.clients.claim())
     );
+});
+
+// Support skipping waiting from the app to activate updates immediately
+self.addEventListener('message', event => {
+    if (event.data && event.data.type === 'SKIP_WAITING') {
+        self.skipWaiting();
+    }
 });

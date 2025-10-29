@@ -1,13 +1,100 @@
+// Simple storage service that augments localStorage with IndexedDB and rotating backups
+class StorageService {
+    constructor() {
+        this.dbName = 'gym-tracker-db';
+        this.storeName = 'keyvalue';
+        this.localStorageKey = 'gymTrackerData';
+        this.backupPrefix = 'gymTrackerBackup_';
+        this.maxBackups = 3;
+    }
+
+    initDB() {
+        return new Promise((resolve, reject) => {
+            try {
+                const request = indexedDB.open(this.dbName, 1);
+                request.onupgradeneeded = () => {
+                    const db = request.result;
+                    if (!db.objectStoreNames.contains(this.storeName)) {
+                        db.createObjectStore(this.storeName, { keyPath: 'key' });
+                    }
+                };
+                request.onsuccess = () => resolve(request.result);
+                request.onerror = () => reject(request.error);
+            } catch (e) {
+                reject(e);
+            }
+        });
+    }
+
+    async saveToIndexedDB(dataString) {
+        try {
+            const db = await this.initDB();
+            await new Promise((resolve, reject) => {
+                const tx = db.transaction(this.storeName, 'readwrite');
+                const store = tx.objectStore(this.storeName);
+                store.put({ key: this.localStorageKey, value: dataString, savedAt: new Date().toISOString() });
+                tx.oncomplete = () => resolve();
+                tx.onerror = () => reject(tx.error);
+            });
+            return true;
+        } catch (e) {
+            console.warn('IndexedDB save failed:', e);
+            return false;
+        }
+    }
+
+    async loadFromIndexedDB() {
+        try {
+            const db = await this.initDB();
+            const result = await new Promise((resolve, reject) => {
+                const tx = db.transaction(this.storeName, 'readonly');
+                const store = tx.objectStore(this.storeName);
+                const req = store.get(this.localStorageKey);
+                req.onsuccess = () => resolve(req.result ? req.result.value : null);
+                req.onerror = () => reject(req.error);
+            });
+            if (result) {
+                return JSON.parse(result);
+            }
+            return null;
+        } catch (e) {
+            console.warn('IndexedDB load failed:', e);
+            return null;
+        }
+    }
+
+    rotateBackups(currentDataString) {
+        try {
+            if (!currentDataString) return;
+            for (let i = this.maxBackups; i > 1; i--) {
+                const oldKey = `${this.backupPrefix}${i - 1}`;
+                const newKey = `${this.backupPrefix}${i}`;
+                const oldData = localStorage.getItem(oldKey);
+                if (oldData) {
+                    localStorage.setItem(newKey, oldData);
+                } else {
+                    localStorage.removeItem(newKey);
+                }
+            }
+            localStorage.setItem(`${this.backupPrefix}1`, currentDataString);
+        } catch (e) {
+            console.warn('Backup rotation failed:', e);
+        }
+    }
+}
+
 class GymTracker {
     constructor() {
         try {
             this.currentProfile = null;
             this.currentMuscleGroup = null;
             this.currentExercise = null;
+            this.storage = new StorageService();
             this.saveDebounceTimer = null;
             this.saveDebounceDelay = 300; // 300ms debounce for saves
             this.backupPrefix = 'gymTrackerBackup_';
             this.maxBackups = 3; // Keep last 3 backups
+            this.historyLimit = Math.max(1, Math.min(200, parseInt(localStorage.getItem('gymTrackerHistoryLimit') || '50', 10)));
             
             // Load data safely - if it fails, use empty object
             try {
@@ -17,6 +104,18 @@ class GymTracker {
                 this.data = {};
             }
             
+            // Try async recovery from IndexedDB if localStorage was empty
+            try {
+                this.storage.loadFromIndexedDB().then(idbData => {
+                    if (idbData && (!this.data || Object.keys(this.data).length === 0)) {
+                        this.data = idbData;
+                        if (this.showNotification) this.showNotification('Data loaded from backup storage', 'success');
+                        // Persist back to localStorage for faster subsequent loads
+                        try { localStorage.setItem('gymTrackerData', JSON.stringify(this.data)); } catch (_) {}
+                    }
+                }).catch(() => {});
+            } catch (_) {}
+
             // Always call init, even if data loading failed
             this.init();
         } catch (error) {
@@ -273,14 +372,24 @@ class GymTracker {
                 this.showNotification(`Storage usage high: ${sizeInMB.toFixed(2)}MB. Consider archiving old history.`, 'warning');
             }
             
-            // Create backup before saving
-            this.createBackup();
+            // Create rotating backup before saving
+            try {
+                const currentLocal = localStorage.getItem('gymTrackerData');
+                if (currentLocal) this.storage.rotateBackups(currentLocal);
+            } catch (_) {}
             
             localStorage.setItem('gymTrackerData', dataString);
         } catch (error) {
             if (error.name === 'QuotaExceededError') {
                 console.error('Storage quota exceeded');
-                this.handleQuotaExceeded();
+                // Attempt to save to IndexedDB as fallback
+                this.storage.saveToIndexedDB(JSON.stringify(this.data)).then(success => {
+                    if (success) {
+                        this.showNotification('Saved to backup storage due to space limits.', 'warning');
+                    } else {
+                        this.showNotification('Failed to save: storage full.', 'error');
+                    }
+                });
             } else {
                 console.error('Error saving data:', error);
                 this.showNotification('Failed to save data. Please try again.', 'error');
@@ -370,6 +479,9 @@ class GymTracker {
         const notification = document.createElement('div');
         notification.className = `notification notification-${type}`;
         notification.textContent = message;
+        notification.setAttribute('role', 'status');
+        notification.setAttribute('aria-live', 'polite');
+        notification.setAttribute('aria-atomic', 'true');
         
         document.body.appendChild(notification);
         
@@ -377,6 +489,62 @@ class GymTracker {
             notification.style.animation = 'slideOut 0.3s ease-out';
             setTimeout(() => notification.remove(), 300);
         }, 3000);
+    }
+
+    // Simple confirm dialog that returns a Promise<boolean>
+    confirm(message, confirmText = 'OK', cancelText = 'Cancel') {
+        return new Promise(resolve => {
+            try {
+                let modal = document.getElementById('confirm-modal-generic');
+                if (!modal) {
+                    modal = document.createElement('div');
+                    modal.id = 'confirm-modal-generic';
+                    modal.className = 'modal hidden';
+                    modal.setAttribute('role', 'dialog');
+                    modal.setAttribute('aria-modal', 'true');
+                    modal.innerHTML = `
+                        <div class="modal-content">
+                            <h2>Confirm</h2>
+                            <p id="confirm-message" style="margin: 1rem 0; color: var(--text-primary);"></p>
+                            <div class="modal-actions">
+                                <button class="btn btn-secondary" id="confirm-cancel-btn">${cancelText}</button>
+                                <button class="btn btn-primary" id="confirm-ok-btn">${confirmText}</button>
+                            </div>
+                        </div>
+                    `;
+                    document.body.appendChild(modal);
+                }
+
+                const messageEl = modal.querySelector('#confirm-message');
+                const okBtn = modal.querySelector('#confirm-ok-btn');
+                const cancelBtn = modal.querySelector('#confirm-cancel-btn');
+
+                const cleanup = (result) => {
+                    modal.classList.add('hidden');
+                    okBtn.removeEventListener('click', onOk);
+                    cancelBtn.removeEventListener('click', onCancel);
+                    modal.removeEventListener('click', onBackdrop);
+                    resolve(result);
+                };
+
+                const onOk = () => cleanup(true);
+                const onCancel = () => cleanup(false);
+                const onBackdrop = (e) => { if (e.target === modal) cleanup(false); };
+
+                messageEl.textContent = message;
+                modal.classList.remove('hidden');
+                okBtn.addEventListener('click', onOk);
+                cancelBtn.addEventListener('click', onCancel);
+                modal.addEventListener('click', onBackdrop);
+            } catch (e) {
+                // Fallback to native confirm if custom dialog fails
+                try {
+                    resolve(window.confirm(message));
+                } catch (_) {
+                    resolve(false);
+                }
+            }
+        });
     }
 
 
@@ -585,6 +753,52 @@ class GymTracker {
             });
         }
 
+        // History limit settings
+        const historyLimitBtn = document.getElementById('history-limit-btn');
+        if (historyLimitBtn) {
+            historyLimitBtn.addEventListener('click', () => {
+                const input = document.getElementById('history-limit-input');
+                if (input) input.value = String(this.historyLimit);
+                const modal = document.getElementById('history-limit-modal');
+                if (modal) modal.classList.remove('hidden');
+            });
+        }
+
+        const cancelHistoryLimit = document.getElementById('cancel-history-limit');
+        if (cancelHistoryLimit) {
+            cancelHistoryLimit.addEventListener('click', () => {
+                const modal = document.getElementById('history-limit-modal');
+                if (modal) modal.classList.add('hidden');
+            });
+        }
+
+        const saveHistoryLimit = document.getElementById('save-history-limit');
+        if (saveHistoryLimit) {
+            saveHistoryLimit.addEventListener('click', () => {
+                const input = document.getElementById('history-limit-input');
+                const value = parseInt(input.value, 10);
+                if (Number.isNaN(value) || value < 1 || value > 200) {
+                    this.showNotification('Please enter a value between 1 and 200.', 'warning');
+                    input.focus();
+                    return;
+                }
+                this.historyLimit = value;
+                try { localStorage.setItem('gymTrackerHistoryLimit', String(value)); } catch (_) {}
+                const modal = document.getElementById('history-limit-modal');
+                if (modal) modal.classList.add('hidden');
+                this.showNotification(`History limit set to ${value}.`, 'success');
+            });
+        }
+
+        const historyLimitModal = document.getElementById('history-limit-modal');
+        if (historyLimitModal) {
+            historyLimitModal.addEventListener('click', (e) => {
+                if (e.target === e.currentTarget) {
+                    historyLimitModal.classList.add('hidden');
+                }
+            });
+        }
+
         // Export/Import functionality
         const exportDataBtn = document.getElementById('export-data-btn');
         if (exportDataBtn) {
@@ -726,6 +940,8 @@ class GymTracker {
             
             const exerciseCard = document.createElement('div');
             exerciseCard.className = 'exercise-card';
+            exerciseCard.setAttribute('role', 'listitem');
+            exerciseCard.setAttribute('tabindex', '0');
             exerciseCard.innerHTML = `
                 <div class="exercise-info">
                     <h3>${name}</h3>
@@ -736,6 +952,12 @@ class GymTracker {
             
             exerciseCard.addEventListener('click', () => {
                 this.editExercise(name, currentValue);
+            });
+            exerciseCard.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    this.editExercise(name, currentValue);
+                }
             });
             
             exercisesList.appendChild(exerciseCard);
@@ -779,7 +1001,7 @@ class GymTracker {
         const saveEdit = () => {
             const newName = input.value.trim();
             if (!newName) {
-                alert('Exercise name cannot be empty');
+                this.showNotification('Exercise name cannot be empty', 'warning');
                 input.focus();
                 return;
             }
@@ -794,7 +1016,7 @@ class GymTracker {
             // Check for duplicate names
             const exercises = this.data.profiles[this.currentProfile].exercises[this.currentMuscleGroup];
             if (exercises[newName]) {
-                alert('An exercise with this name already exists');
+                this.showNotification('An exercise with this name already exists', 'warning');
                 input.focus();
                 return;
             }
@@ -865,7 +1087,7 @@ class GymTracker {
         const saveEdit = () => {
             const newName = input.value.trim();
             if (!newName) {
-                alert('Muscle group name cannot be empty');
+                this.showNotification('Muscle group name cannot be empty', 'warning');
                 input.focus();
                 return;
             }
@@ -908,6 +1130,7 @@ class GymTracker {
             const group = btn.dataset.group;
             const displayName = this.data.muscleGroupNames ? this.data.muscleGroupNames[group] : this.capitalize(group);
             btn.querySelector('span').textContent = displayName;
+            btn.setAttribute('aria-label', `Open ${displayName} exercises`);
         });
     }
 
@@ -960,8 +1183,8 @@ class GymTracker {
                         <div class="history-date">${this.formatDate(entry.date)}</div>
                     </div>
                     <div class="history-actions">
-                        <button class="history-btn edit-btn" data-index="${originalIndex}" title="Edit">✏️</button>
-                        <button class="history-btn delete-btn" data-index="${originalIndex}" title="Delete">🗑️</button>
+                        <button class="history-btn edit-btn" data-index="${originalIndex}" title="Edit" aria-label="Edit entry">✏️</button>
+                        <button class="history-btn delete-btn" data-index="${originalIndex}" title="Delete" aria-label="Delete entry">🗑️</button>
                     </div>
                 `;
                 
@@ -1047,16 +1270,18 @@ class GymTracker {
         
         // Don't allow deleting if it's the only entry
         if (exercise.history.length <= 1) {
-            alert('Cannot delete the only history entry. Add a new weight first.');
+            this.showNotification('Cannot delete the only history entry. Add a new weight first.', 'warning');
             return;
         }
         
-        if (confirm('Delete this weight entry?')) {
-            exercise.history.splice(historyIndex, 1);
-            this.saveData();
-            this.populateHistory(this.currentExercise);
-            this.renderExercises();
-        }
+        this.confirm('Delete this weight entry?').then((ok) => {
+            if (ok) {
+                exercise.history.splice(historyIndex, 1);
+                this.saveData();
+                this.populateHistory(this.currentExercise);
+                this.renderExercises();
+            }
+        });
     }
 
     saveExercise() {
@@ -1069,9 +1294,10 @@ class GymTracker {
         // Add new entry to beginning of history array (most recent first)
         if (exercise && exercise.history) {
             exercise.history.unshift(this.createHistoryEntry(newValue));
-            // Keep only last 10 entries to prevent unlimited growth
-            if (exercise.history.length > 10) {
-                exercise.history = exercise.history.slice(0, 10);
+            // Keep only last N entries to prevent unlimited growth
+            const limit = this.historyLimit || 50;
+            if (exercise.history.length > limit) {
+                exercise.history = exercise.history.slice(0, limit);
             }
         } else {
             // Create new exercise with history if it doesn't exist
@@ -1140,8 +1366,8 @@ class GymTracker {
                         <div class="history-date">${this.formatDate(entry.date)}</div>
                     </div>
                     <div class="history-actions">
-                        <button class="history-btn edit-btn" data-index="${originalIndex}" title="Edit">✏️</button>
-                        <button class="history-btn delete-btn" data-index="${originalIndex}" title="Delete">🗑️</button>
+                        <button class="history-btn edit-btn" data-index="${originalIndex}" title="Edit" aria-label="Edit entry">✏️</button>
+                        <button class="history-btn delete-btn" data-index="${originalIndex}" title="Delete" aria-label="Delete entry">🗑️</button>
                     </div>
                 `;
                 
@@ -1172,16 +1398,18 @@ class GymTracker {
         
         // Don't allow deleting if it's the only entry
         if (exercise.history.length <= 1) {
-            alert('Cannot delete the only history entry. Add a new weight first.');
+            this.showNotification('Cannot delete the only history entry. Add a new weight first.', 'warning');
             return;
         }
         
-        if (confirm('Delete this weight entry?')) {
-            exercise.history.splice(historyIndex, 1);
-            this.saveData();
-            this.populateFullHistory(); // Refresh full history
-            this.renderExercises(); // Update main exercise list
-        }
+        this.confirm('Delete this weight entry?').then((ok) => {
+            if (ok) {
+                exercise.history.splice(historyIndex, 1);
+                this.saveData();
+                this.populateFullHistory(); // Refresh full history
+                this.renderExercises(); // Update main exercise list
+            }
+        });
     }
 
     addNewExercise() {
@@ -1190,13 +1418,13 @@ class GymTracker {
 
         // Validation
         if (!exerciseName) {
-            alert('Please enter an exercise name');
+            this.showNotification('Please enter an exercise name', 'warning');
             document.getElementById('new-exercise-name').focus();
             return;
         }
 
         if (!exerciseValue) {
-            alert('Please enter an initial weight/value');
+            this.showNotification('Please enter an initial weight/value', 'warning');
             document.getElementById('new-exercise-value').focus();
             return;
         }
@@ -1204,7 +1432,7 @@ class GymTracker {
         // Check for duplicate exercise names
         const exercises = this.data.profiles[this.currentProfile].exercises[this.currentMuscleGroup] || {};
         if (exercises[exerciseName]) {
-            alert('An exercise with this name already exists');
+            this.showNotification('An exercise with this name already exists', 'warning');
             document.getElementById('new-exercise-name').focus();
             return;
         }
@@ -1234,7 +1462,7 @@ class GymTracker {
 
             // Ensure we have data to export
             if (!this.data.profiles || Object.keys(this.data.profiles).length === 0) {
-                alert('No data to export. Please add some exercises first.');
+                this.showNotification('No data to export. Please add some exercises first.', 'info');
                 return;
             }
 
@@ -1306,21 +1534,21 @@ class GymTracker {
                     URL.revokeObjectURL(url);
                 }, 100);
 
-                alert('Backup created successfully!');
+                this.showNotification('Backup created successfully!', 'success');
             } catch (downloadError) {
                 console.error('Download fallback failed:', downloadError);
                 // Last resort: copy to clipboard
                 try {
                     await navigator.clipboard.writeText(jsonString);
-                    alert('Export failed to download. Backup data has been copied to your clipboard instead. You can paste it into a text file and save it manually.');
+                    this.showNotification('Export failed to download. Backup copied to clipboard.', 'warning');
                 } catch (clipboardError) {
                     console.error('Clipboard fallback failed:', clipboardError);
-                    alert('Export failed. Please try again or contact support.');
+                    this.showNotification('Export failed. Please try again.', 'error');
                 }
             }
         } catch (error) {
             console.error('Export error:', error);
-            alert('Failed to create backup. Please try again.');
+            this.showNotification('Failed to create backup. Please try again.', 'error');
         }
     }
 
@@ -1352,7 +1580,7 @@ class GymTracker {
             this.processImportData(importData);
         } catch (error) {
             console.error('File import error:', error);
-            alert('Invalid backup file. Please check the file format and try again.');
+            this.showNotification('Invalid backup file. Please check the file format and try again.', 'error');
         }
     }
 
@@ -1363,14 +1591,14 @@ class GymTracker {
             this.processImportData(importData);
         } catch (error) {
             console.error('Clipboard import error:', error);
-            alert('Invalid JSON data in clipboard. Please copy a valid backup and try again.');
+            this.showNotification('Invalid JSON data in clipboard. Please copy a valid backup and try again.', 'error');
         }
     }
 
     processImportData(importData) {
         // Validate import data structure
         if (!this.validateImportData(importData)) {
-            alert('Invalid backup data format. Please check your backup file.');
+            this.showNotification('Invalid backup data format. Please check your backup file.', 'error');
             return;
         }
 
@@ -1533,6 +1761,42 @@ class GymTracker {
         
         return date.toLocaleDateString();
     }
+
+    // Handle basic deep links from PWA shortcuts
+    handleDeepLink(hash) {
+        try {
+            switch ((hash || '').toLowerCase()) {
+                case '#switch-user':
+                    if (!this.currentProfile) {
+                        // Default to first profile
+                        const firstKey = Object.keys(this.data.profiles || { elena: {} })[0] || 'elena';
+                        this.selectProfile(firstKey);
+                    }
+                    this.switchUser();
+                    break;
+                case '#add-exercise':
+                    if (!this.currentProfile) {
+                        const firstKey = Object.keys(this.data.profiles || { elena: {} })[0] || 'elena';
+                        this.selectProfile(firstKey);
+                        this.showNotification('Select a muscle group to add an exercise.', 'info');
+                        this.showScreen('muscle-groups');
+                    } else if (!this.currentMuscleGroup) {
+                        this.showNotification('Select a muscle group to add an exercise.', 'info');
+                        this.showScreen('muscle-groups');
+                    } else {
+                        this.showAddModal();
+                    }
+                    break;
+                case '#export-data':
+                    this.exportData();
+                    break;
+                default:
+                    break;
+            }
+        } catch (e) {
+            console.warn('Deep link handling failed:', e);
+        }
+    }
 }
 
 // Simple fallback function to show main screen
@@ -1557,6 +1821,8 @@ function showMainScreenFallback() {
 document.addEventListener('DOMContentLoaded', () => {
     try {
         window.gymTracker = new GymTracker();
+        // Handle initial deep link
+        try { window.gymTracker.handleDeepLink(window.location.hash); } catch (_) {}
         
         // Safety timeout - if app doesn't load in 2 seconds, force show main screen
         setTimeout(() => {
@@ -1584,6 +1850,14 @@ window.addEventListener('load', () => {
     }, 500);
 });
 
+// Listen for hash changes to handle deep links while app is open
+window.addEventListener('hashchange', () => {
+    const tracker = window.gymTracker;
+    if (tracker && typeof tracker.handleDeepLink === 'function') {
+        tracker.handleDeepLink(window.location.hash);
+    }
+});
+
 // Register service worker with update handling
 if ('serviceWorker' in navigator) {
     let refreshing = false;
@@ -1606,20 +1880,46 @@ if ('serviceWorker' in navigator) {
                     registration.update();
                 }, 3600000);
                 
+                // Prompt to update if a waiting SW already exists
+                const promptToUpdate = (waitingWorker) => {
+                    if (!waitingWorker) return;
+                    try {
+                        const tracker = window.gymTracker;
+                        if (tracker && typeof tracker.confirm === 'function') {
+                            tracker.confirm('A new version is available. Update now?').then(shouldUpdate => {
+                                if (shouldUpdate) {
+                                    waitingWorker.postMessage({ type: 'SKIP_WAITING' });
+                                }
+                            });
+                        } else {
+                            const shouldUpdate = window.confirm('A new version is available. Update now?');
+                            if (shouldUpdate) {
+                                waitingWorker.postMessage({ type: 'SKIP_WAITING' });
+                            }
+                        }
+                    } catch (e) {
+                        console.warn('Update prompt failed, falling back to notification.');
+                        const tracker = window.gymTracker;
+                        if (tracker && tracker.showNotification) {
+                            tracker.showNotification('New version available. Reload the app to update.', 'info');
+                        }
+                    }
+                };
+
+                if (registration.waiting) {
+                    promptToUpdate(registration.waiting);
+                }
+
                 // Listen for update found
                 registration.addEventListener('updatefound', () => {
                     const newWorker = registration.installing;
-                    if (newWorker) {
-                        newWorker.addEventListener('statechange', () => {
-                            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                                // New version available - show update notification
-                                const tracker = window.gymTracker;
-                                if (tracker && tracker.showNotification) {
-                                    tracker.showNotification('New version available! Reload to update.', 'info');
-                                }
-                            }
-                        });
-                    }
+                    if (!newWorker) return;
+                    newWorker.addEventListener('statechange', () => {
+                        if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                            // New version available - prompt to update
+                            promptToUpdate(newWorker);
+                        }
+                    });
                 });
             })
             .catch(registrationError => {

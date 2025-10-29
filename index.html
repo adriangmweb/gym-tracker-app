@@ -30,17 +30,17 @@
         <!-- Main Screen -->
         <div id="main-screen" class="screen hidden">
             <header class="main-header">
-                <button class="settings-btn" id="settings-btn" title="Settings">⚙️</button>
+                <button class="settings-btn" id="settings-btn" title="Settings" aria-label="Open settings">⚙️</button>
                 <h1>Gym Tracker</h1>
                 <p>Select your profile</p>
             </header>
             
             <div class="profile-selector">
-                <button class="profile-btn" data-profile="elena">
+                <button class="profile-btn" data-profile="elena" aria-label="Select profile Elena">
                     <div class="profile-icon">E</div>
                     <span>Elena</span>
                 </button>
-                <button class="profile-btn" data-profile="adri">
+                <button class="profile-btn" data-profile="adri" aria-label="Select profile Adri">
                     <div class="profile-icon">A</div>
                     <span>Adri</span>
                 </button>
@@ -50,7 +50,7 @@
         <!-- Settings Screen -->
         <div id="settings-screen" class="screen hidden">
             <header class="header">
-                <button class="back-btn" id="back-to-main-settings">←</button>
+                <button class="back-btn" id="back-to-main-settings" aria-label="Back to main">←</button>
                 <h1>Settings</h1>
                 <div class="spacer"></div>
             </header>
@@ -73,6 +73,15 @@
                     </div>
                     <div class="chevron">→</div>
                 </button>
+
+                <button class="settings-item-btn" id="history-limit-btn">
+                    <div class="settings-item-icon">🕒</div>
+                    <div class="settings-item-content">
+                        <div class="settings-item-title">History Limit</div>
+                        <div class="settings-item-subtitle">Set max entries per exercise</div>
+                    </div>
+                    <div class="chevron">→</div>
+                </button>
                 
                 <div class="settings-info">
                     <h3>💡 Backup Tips</h3>
@@ -89,7 +98,7 @@
         <!-- Muscle Groups Screen -->
         <div id="muscle-groups-screen" class="screen hidden">
             <header class="header">
-                <button class="back-btn" id="back-to-main">←</button>
+                <button class="back-btn" id="back-to-main" aria-label="Back">←</button>
                 <h1 id="profile-title">Elena</h1>
                 <div class="spacer"></div>
             </header>
@@ -125,31 +134,31 @@
         <!-- Exercises Screen -->
         <div id="exercises-screen" class="screen hidden">
             <header class="header">
-                <button class="back-btn" id="back-to-groups">←</button>
+                <button class="back-btn" id="back-to-groups" aria-label="Back to muscle groups">←</button>
                 <div class="title-group">
                     <h1 id="muscle-group-title">Back</h1>
-                    <button class="edit-name-btn" id="edit-muscle-group-btn" title="Edit muscle group name">✏️</button>
+                    <button class="edit-name-btn" id="edit-muscle-group-btn" title="Edit muscle group name" aria-label="Edit muscle group name">✏️</button>
                 </div>
                 <div class="header-actions">
-                    <button class="switch-user-btn" id="switch-user-btn" title="Switch user">
+                    <button class="switch-user-btn" id="switch-user-btn" title="Switch user" aria-label="Switch user">
                         <span class="user-initial" id="current-user-initial">E</span>
                         ⇄
                     </button>
-                    <button class="add-btn" id="add-exercise-btn">+</button>
+                    <button class="add-btn" id="add-exercise-btn" aria-label="Add exercise">+</button>
                 </div>
             </header>
             
-            <div id="exercises-list" class="exercises-list">
+            <div id="exercises-list" class="exercises-list" role="list" aria-label="Exercises list">
                 <!-- Exercises will be populated dynamically -->
             </div>
         </div>
 
         <!-- Edit Modal -->
-        <div id="edit-modal" class="modal hidden">
+        <div id="edit-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="edit-exercise-name">
             <div class="modal-content">
                 <div class="modal-header">
                     <h2 id="edit-exercise-name">Exercise</h2>
-                    <button class="edit-name-btn" id="edit-name-btn" title="Edit exercise name">✏️</button>
+                    <button class="edit-name-btn" id="edit-name-btn" title="Edit exercise name" aria-label="Edit exercise name">✏️</button>
                 </div>
                 
                 <div class="input-group">
@@ -175,9 +184,9 @@
         </div>
 
         <!-- Add Exercise Modal -->
-        <div id="add-modal" class="modal hidden">
+        <div id="add-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="add-modal-title">
             <div class="modal-content">
-                <h2>Add New Exercise</h2>
+                <h2 id="add-modal-title">Add New Exercise</h2>
                 <div class="input-group">
                     <label for="new-exercise-name">Exercise Name</label>
                     <input type="text" id="new-exercise-name" placeholder="Enter exercise name">
@@ -194,7 +203,7 @@
         </div>
 
         <!-- Full History Modal -->
-        <div id="full-history-modal" class="modal hidden">
+        <div id="full-history-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="full-history-exercise-name">
             <div class="modal-content full-history-content">
                 <header class="full-history-header">
                     <button class="back-btn" id="back-to-edit">←</button>
@@ -209,9 +218,9 @@
         </div>
 
         <!-- Import Modal -->
-        <div id="import-modal" class="modal hidden">
+        <div id="import-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="import-modal-title">
             <div class="modal-content">
-                <h2>Import Data</h2>
+                <h2 id="import-modal-title">Import Data</h2>
                 <p class="modal-subtitle">Choose how to import your backup:</p>
                 
                 <div class="import-options">
@@ -237,10 +246,26 @@
             </div>
         </div>
 
-        <!-- Import Result Modal -->
-        <div id="import-result-modal" class="modal hidden">
+        <!-- History Limit Modal -->
+        <div id="history-limit-modal" class="modal hidden">
             <div class="modal-content">
-                <h2>Import Complete!</h2>
+                <h2>History Limit</h2>
+                <p class="modal-subtitle">Keep the latest N entries per exercise</p>
+                <div class="input-group">
+                    <label for="history-limit-input">Max entries (1-200)</label>
+                    <input type="number" id="history-limit-input" min="1" max="200" value="50">
+                </div>
+                <div class="modal-actions">
+                    <button class="btn btn-secondary" id="cancel-history-limit">Cancel</button>
+                    <button class="btn btn-primary" id="save-history-limit">Save</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Import Result Modal -->
+        <div id="import-result-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="import-result-title">
+            <div class="modal-content">
+                <h2 id="import-result-title">Import Complete!</h2>
                 <div id="import-summary" class="import-summary">
                     <!-- Summary will be populated here -->
                 </div>
