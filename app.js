@@ -1,22 +1,72 @@
 class GymTracker {
     constructor() {
-        this.currentProfile = null;
-        this.currentMuscleGroup = null;
-        this.currentExercise = null;
-        this.data = this.loadData();
-        this.saveDebounceTimer = null;
-        this.saveDebounceDelay = 300; // 300ms debounce for saves
-        this.backupPrefix = 'gymTrackerBackup_';
-        this.maxBackups = 3; // Keep last 3 backups
-        this.init();
+        try {
+            this.currentProfile = null;
+            this.currentMuscleGroup = null;
+            this.currentExercise = null;
+            this.saveDebounceTimer = null;
+            this.saveDebounceDelay = 300; // 300ms debounce for saves
+            this.backupPrefix = 'gymTrackerBackup_';
+            this.maxBackups = 3; // Keep last 3 backups
+            
+            // Load data safely - if it fails, use empty object
+            try {
+                this.data = this.loadData();
+            } catch (error) {
+                console.error('Error loading data in constructor:', error);
+                this.data = {};
+            }
+            
+            // Always call init, even if data loading failed
+            this.init();
+        } catch (error) {
+            console.error('Critical error in constructor:', error);
+            // Last resort: try to show main screen directly
+            setTimeout(() => {
+                const loadingScreen = document.getElementById('loading-screen');
+                const mainScreen = document.getElementById('main-screen');
+                if (loadingScreen) loadingScreen.classList.add('hidden');
+                if (mainScreen) mainScreen.classList.remove('hidden');
+            }, 100);
+        }
     }
 
     init() {
         try {
+            // Ensure DOM is ready
+            if (!document.body) {
+                // Wait for DOM
+                setTimeout(() => this.init(), 50);
+                return;
+            }
+            
             this.initializeData();
+            
+            // Validate data now that all methods are available
+            if (this.validateDataStructure && !this.validateDataStructure(this.data)) {
+                console.warn('Data structure invalid, attempting recovery...');
+                if (this.attemptDataRecovery) {
+                    const recovered = this.attemptDataRecovery();
+                    if (recovered) {
+                        this.data = recovered;
+                        setTimeout(() => {
+                            if (this.showNotification) {
+                                this.showNotification('Data recovered from backup', 'success');
+                            }
+                        }, 500);
+                    } else {
+                        // Reset to empty and let initializeData create defaults
+                        this.data = {};
+                        this.initializeData();
+                    }
+                }
+            }
+            
             this.bindEvents();
+            
             // Show loading briefly for smooth transition
             this.showScreen('loading');
+            
             // Use setTimeout with minimal delay to ensure DOM is ready
             setTimeout(() => {
                 this.showScreen('main');
@@ -24,7 +74,9 @@ class GymTracker {
         } catch (error) {
             console.error('Error during initialization:', error);
             // Always show main screen even if there's an error
-            this.showScreen('main');
+            setTimeout(() => {
+                this.showScreen('main');
+            }, 100);
         }
     }
 
@@ -39,132 +91,146 @@ class GymTracker {
     }
 
     initializeData() {
-        if (!this.data.profiles) {
-            this.data = {
-                muscleGroupNames: {
-                    back: 'Back',
-                    biceps: 'Biceps', 
-                    legs: 'Legs',
-                    triceps: 'Triceps',
-                    shoulders: 'Shoulders',
-                    chest: 'Chest'
-                },
-                profiles: {
-                    elena: {
-                        name: 'Elena',
-                        exercises: {
-                            back: {
-                                'Upper back': this.createExercise('25kg'),
-                                'Low row': this.createExercise('45kg'),
-                                'Lat pulldown': this.createExercise('30kg'),
-                                'Pulley': this.createExercise('25kg'),
-                                'Pull-ups': this.createExercise('30kg')
-                            },
-                            biceps: {
-                                'Bicep machine': this.createExercise('16kg'),
-                                'Dumbbell curl': this.createExercise('12.5kg'),
-                                'Cable curl': this.createExercise('12.5kg')
-                            },
-                            legs: {
-                                'Abductor': this.createExercise('55kg'),
-                                'Leg extension': this.createExercise('35kg'),
-                                'Prone leg curl': this.createExercise('30kg'),
-                                'Leg curl': this.createExercise('35kg'),
-                                'Leg press': this.createExercise('90kg'),
-                                'Deadlift': this.createExercise('20kg'),
-                                'Calves': this.createExercise('80kg'),
-                                'Inner thigh': this.createExercise('35kg')
-                            },
-                            triceps: {
-                                'Tricep kickbacks': this.createExercise('9kg'),
-                                'Cable bar': this.createExercise('20kg'),
-                                'French press': this.createExercise('10kg'),
-                                'Cable french press': this.createExercise('12.5kg')
-                            },
-                            shoulders: {
-                                'Military press': this.createExercise('7.5kg'),
-                                'Lateral raises': this.createExercise('7kg'),
-                                'Face pull': this.createExercise('16kg'),
-                                'Shoulder press': this.createExercise('15kg')
-                            },
-                            chest: {
-                                'Chest fly': this.createExercise('20kg'),
-                                'Chest press': this.createExercise('25kg')
-                            }
-                        }
+        try {
+            // Ensure data object exists
+            if (!this.data) {
+                this.data = {};
+            }
+            
+            if (!this.data.profiles) {
+                this.data = {
+                    muscleGroupNames: {
+                        back: 'Back',
+                        biceps: 'Biceps', 
+                        legs: 'Legs',
+                        triceps: 'Triceps',
+                        shoulders: 'Shoulders',
+                        chest: 'Chest'
                     },
-                    adri: {
-                        name: 'Adri',
-                        exercises: {
-                            biceps: {
-                                'Bicep machine': this.createExercise('41kg'),
-                                'Hammer curl': this.createExercise('15kg'),
-                                'Cable curl': this.createExercise('17kg')
-                            },
-                            triceps: {
-                                'Cable bar': this.createExercise('20kg'),
-                                'Kickbacks': this.createExercise('12kg'),
-                                'Standing french press': this.createExercise('12kg'),
-                                'Cable french press': this.createExercise('15kg')
-                            },
-                            back: {
-                                'Low row': this.createExercise('55kg'),
-                                'Upper back': this.createExercise('35kg'),
-                                'Pulley': this.createExercise('30kg'),
-                                'Lat pulldown': this.createExercise('45kg')
-                            },
-                            legs: {
-                                'Leg extension': this.createExercise('45kg'),
-                                'Leg press': this.createExercise('80kg'),
-                                'Prone leg curl': this.createExercise('32kg'),
-                                'Leg curl': this.createExercise('40kg'),
-                                'Abductor': this.createExercise('45kg'),
-                                'Calves': this.createExercise('80kg'),
-                                'Inner thigh': this.createExercise('20kg')
-                            },
-                            chest: {
-                                'Chest press': this.createExercise('50kg'),
-                                'Chest fly': this.createExercise('40kg')
-                            },
-                            shoulders: {
-                                'Military press': this.createExercise('12.5kg'),
-                                'Shoulder fly': this.createExercise('7.5kg'),
-                                'Face pull': this.createExercise('15kg'),
-                                'Shoulder press': this.createExercise('35kg')
+                    profiles: {
+                        elena: {
+                            name: 'Elena',
+                            exercises: {
+                                back: {
+                                    'Upper back': this.createExercise('25kg'),
+                                    'Low row': this.createExercise('45kg'),
+                                    'Lat pulldown': this.createExercise('30kg'),
+                                    'Pulley': this.createExercise('25kg'),
+                                    'Pull-ups': this.createExercise('30kg')
+                                },
+                                biceps: {
+                                    'Bicep machine': this.createExercise('16kg'),
+                                    'Dumbbell curl': this.createExercise('12.5kg'),
+                                    'Cable curl': this.createExercise('12.5kg')
+                                },
+                                legs: {
+                                    'Abductor': this.createExercise('55kg'),
+                                    'Leg extension': this.createExercise('35kg'),
+                                    'Prone leg curl': this.createExercise('30kg'),
+                                    'Leg curl': this.createExercise('35kg'),
+                                    'Leg press': this.createExercise('90kg'),
+                                    'Deadlift': this.createExercise('20kg'),
+                                    'Calves': this.createExercise('80kg'),
+                                    'Inner thigh': this.createExercise('35kg')
+                                },
+                                triceps: {
+                                    'Tricep kickbacks': this.createExercise('9kg'),
+                                    'Cable bar': this.createExercise('20kg'),
+                                    'French press': this.createExercise('10kg'),
+                                    'Cable french press': this.createExercise('12.5kg')
+                                },
+                                shoulders: {
+                                    'Military press': this.createExercise('7.5kg'),
+                                    'Lateral raises': this.createExercise('7kg'),
+                                    'Face pull': this.createExercise('16kg'),
+                                    'Shoulder press': this.createExercise('15kg')
+                                },
+                                chest: {
+                                    'Chest fly': this.createExercise('20kg'),
+                                    'Chest press': this.createExercise('25kg')
+                                }
+                            }
+                        },
+                        adri: {
+                            name: 'Adri',
+                            exercises: {
+                                biceps: {
+                                    'Bicep machine': this.createExercise('41kg'),
+                                    'Hammer curl': this.createExercise('15kg'),
+                                    'Cable curl': this.createExercise('17kg')
+                                },
+                                triceps: {
+                                    'Cable bar': this.createExercise('20kg'),
+                                    'Kickbacks': this.createExercise('12kg'),
+                                    'Standing french press': this.createExercise('12kg'),
+                                    'Cable french press': this.createExercise('15kg')
+                                },
+                                back: {
+                                    'Low row': this.createExercise('55kg'),
+                                    'Upper back': this.createExercise('35kg'),
+                                    'Pulley': this.createExercise('30kg'),
+                                    'Lat pulldown': this.createExercise('45kg')
+                                },
+                                legs: {
+                                    'Leg extension': this.createExercise('45kg'),
+                                    'Leg press': this.createExercise('80kg'),
+                                    'Prone leg curl': this.createExercise('32kg'),
+                                    'Leg curl': this.createExercise('40kg'),
+                                    'Abductor': this.createExercise('45kg'),
+                                    'Calves': this.createExercise('80kg'),
+                                    'Inner thigh': this.createExercise('20kg')
+                                },
+                                chest: {
+                                    'Chest press': this.createExercise('50kg'),
+                                    'Chest fly': this.createExercise('40kg')
+                                },
+                                shoulders: {
+                                    'Military press': this.createExercise('12.5kg'),
+                                    'Shoulder fly': this.createExercise('7.5kg'),
+                                    'Face pull': this.createExercise('15kg'),
+                                    'Shoulder press': this.createExercise('35kg')
+                                }
                             }
                         }
                     }
+                };
+                
+                // Try to save, but don't fail if it doesn't work
+                try {
+                    this.saveData();
+                } catch (saveError) {
+                    console.warn('Could not save initial data:', saveError);
                 }
-            };
-            this.saveData();
+            }
+        } catch (error) {
+            console.error('Error initializing data:', error);
+            // Ensure we have at least an empty structure
+            if (!this.data) {
+                this.data = {};
+            }
         }
     }
 
     loadData() {
         try {
+            // Check if localStorage is available
+            if (typeof localStorage === 'undefined') {
+                console.warn('localStorage not available');
+                return {};
+            }
+            
             const data = localStorage.getItem('gymTrackerData');
             if (!data) return {};
             
             const parsed = JSON.parse(data);
             
-            // Validate data structure integrity (only if validateDataStructure exists)
-            if (this.validateDataStructure && !this.validateDataStructure(parsed)) {
-                console.warn('Data structure invalid, attempting recovery...');
-                if (this.attemptDataRecovery) {
-                    const recovered = this.attemptDataRecovery();
-                    if (recovered) {
-                        // Delay notification until DOM is ready
-                        setTimeout(() => {
-                            if (this.showNotification) {
-                                this.showNotification('Data recovered from backup', 'success');
-                            }
-                        }, 100);
-                        return recovered;
-                    }
-                }
-                // If recovery fails, return empty and let initializeData handle it
+            // Basic validation - check if it's an object
+            if (!parsed || typeof parsed !== 'object') {
                 return {};
             }
+            
+            // Skip advanced validation if methods don't exist yet (constructor phase)
+            // Will be validated again after class is fully initialized if needed
             
             // Backward compatibility: add muscleGroupNames if missing
             if (parsed.profiles && !parsed.muscleGroupNames) {
@@ -181,23 +247,6 @@ class GymTracker {
             return parsed;
         } catch (error) {
             console.error('Error loading data:', error);
-            // Attempt recovery from backups only if method exists
-            if (this.attemptDataRecovery) {
-                try {
-                    const recovered = this.attemptDataRecovery();
-                    if (recovered) {
-                        // Delay notification until DOM is ready
-                        setTimeout(() => {
-                            if (this.showNotification) {
-                                this.showNotification('Data recovered from backup after corruption', 'success');
-                            }
-                        }, 100);
-                        return recovered;
-                    }
-                } catch (recoveryError) {
-                    console.error('Recovery failed:', recoveryError);
-                }
-            }
             // Always return empty object if all else fails
             return {};
         }
@@ -1486,18 +1535,53 @@ class GymTracker {
     }
 }
 
+// Simple fallback function to show main screen
+function showMainScreenFallback() {
+    try {
+        const loadingScreen = document.getElementById('loading-screen');
+        const mainScreen = document.getElementById('main-screen');
+        if (loadingScreen) {
+            loadingScreen.classList.add('hidden');
+            loadingScreen.style.display = 'none';
+        }
+        if (mainScreen) {
+            mainScreen.classList.remove('hidden');
+            mainScreen.style.display = 'block';
+        }
+    } catch (e) {
+        console.error('Even fallback failed:', e);
+    }
+}
+
 // Initialize app when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
     try {
         window.gymTracker = new GymTracker();
+        
+        // Safety timeout - if app doesn't load in 2 seconds, force show main screen
+        setTimeout(() => {
+            const loadingScreen = document.getElementById('loading-screen');
+            if (loadingScreen && !loadingScreen.classList.contains('hidden')) {
+                console.warn('App initialization timeout - forcing main screen');
+                showMainScreenFallback();
+            }
+        }, 2000);
     } catch (error) {
         console.error('Failed to initialize GymTracker:', error);
         // Fallback: ensure main screen is shown
-        const loadingScreen = document.getElementById('loading-screen');
-        const mainScreen = document.getElementById('main-screen');
-        if (loadingScreen) loadingScreen.classList.add('hidden');
-        if (mainScreen) mainScreen.classList.remove('hidden');
+        showMainScreenFallback();
     }
+});
+
+// Also try on window load as backup
+window.addEventListener('load', () => {
+    setTimeout(() => {
+        const loadingScreen = document.getElementById('loading-screen');
+        if (loadingScreen && !loadingScreen.classList.contains('hidden')) {
+            console.warn('Still on loading screen after window load - forcing main screen');
+            showMainScreenFallback();
+        }
+    }, 500);
 });
 
 // Register service worker with update handling
