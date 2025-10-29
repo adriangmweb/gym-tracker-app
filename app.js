@@ -4,18 +4,23 @@ class GymTracker {
         this.currentMuscleGroup = null;
         this.currentExercise = null;
         this.data = this.loadData();
+        this.saveDebounceTimer = null;
+        this.saveDebounceDelay = 300; // 300ms debounce for saves
+        this.backupPrefix = 'gymTrackerBackup_';
+        this.maxBackups = 3; // Keep last 3 backups
         this.init();
     }
 
     init() {
         this.initializeData();
         this.bindEvents();
+        // Show loading briefly for smooth transition (200ms max)
         this.showScreen('loading');
-        
-        // Simulate loading time
-        setTimeout(() => {
-            this.showScreen('main');
-        }, 1500);
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                this.showScreen('main');
+            });
+        });
     }
 
     // Data Management
@@ -133,7 +138,24 @@ class GymTracker {
     loadData() {
         try {
             const data = localStorage.getItem('gymTrackerData');
-            const parsed = data ? JSON.parse(data) : {};
+            if (!data) return {};
+            
+            const parsed = JSON.parse(data);
+            
+            // Validate data structure integrity
+            if (!this.validateDataStructure(parsed)) {
+                console.warn('Data structure invalid, attempting recovery...');
+                const recovered = this.attemptDataRecovery();
+                if (recovered) {
+                    // Delay notification until DOM is ready
+                    setTimeout(() => {
+                        this.showNotification('Data recovered from backup', 'success');
+                    }, 100);
+                    return recovered;
+                }
+                // If recovery fails, return empty and let initializeData handle it
+                return {};
+            }
             
             // Backward compatibility: add muscleGroupNames if missing
             if (parsed.profiles && !parsed.muscleGroupNames) {
@@ -150,16 +172,140 @@ class GymTracker {
             return parsed;
         } catch (error) {
             console.error('Error loading data:', error);
+            // Attempt recovery from backups
+            const recovered = this.attemptDataRecovery();
+            if (recovered) {
+                // Delay notification until DOM is ready
+                setTimeout(() => {
+                    this.showNotification('Data recovered from backup after corruption', 'success');
+                }, 100);
+                return recovered;
+            }
             return {};
         }
     }
 
     saveData() {
+        // Clear existing debounce timer
+        clearTimeout(this.saveDebounceTimer);
+        
+        // Set new timer for debounced save
+        this.saveDebounceTimer = setTimeout(() => {
+            this.performSave();
+        }, this.saveDebounceDelay);
+    }
+
+    performSave() {
         try {
-            localStorage.setItem('gymTrackerData', JSON.stringify(this.data));
+            const dataString = JSON.stringify(this.data);
+            const sizeInMB = new Blob([dataString]).size / (1024 * 1024);
+            
+            // Warn if approaching localStorage limit (80% of typical 5MB limit)
+            if (sizeInMB > 4) {
+                console.warn(`Storage usage: ${sizeInMB.toFixed(2)}MB`);
+                this.showNotification(`Storage usage high: ${sizeInMB.toFixed(2)}MB. Consider archiving old history.`, 'warning');
+            }
+            
+            // Create backup before saving
+            this.createBackup();
+            
+            localStorage.setItem('gymTrackerData', dataString);
         } catch (error) {
-            console.error('Error saving data:', error);
+            if (error.name === 'QuotaExceededError') {
+                console.error('Storage quota exceeded');
+                this.handleQuotaExceeded();
+            } else {
+                console.error('Error saving data:', error);
+                this.showNotification('Failed to save data. Please try again.', 'error');
+            }
         }
+    }
+
+    validateDataStructure(data) {
+        if (!data || typeof data !== 'object') return false;
+        
+        // Check if profiles exist and are valid
+        if (data.profiles && typeof data.profiles === 'object') {
+            for (const [key, profile] of Object.entries(data.profiles)) {
+                if (!profile.name || !profile.exercises) return false;
+            }
+        }
+        
+        return true;
+    }
+
+    attemptDataRecovery() {
+        // Try to recover from most recent backup
+        for (let i = this.maxBackups; i >= 1; i--) {
+            try {
+                const backupKey = `${this.backupPrefix}${i}`;
+                const backupData = localStorage.getItem(backupKey);
+                if (backupData) {
+                    const parsed = JSON.parse(backupData);
+                    if (this.validateDataStructure(parsed)) {
+                        console.log(`Recovered from backup ${i}`);
+                        return parsed;
+                    }
+                }
+            } catch (error) {
+                console.warn(`Backup ${i} corrupted, trying next...`);
+                continue;
+            }
+        }
+        return null;
+    }
+
+    createBackup() {
+        try {
+            const currentData = localStorage.getItem('gymTrackerData');
+            if (!currentData) return;
+            
+            // Shift existing backups (keep only last 3)
+            for (let i = this.maxBackups; i > 1; i--) {
+                const oldKey = `${this.backupPrefix}${i - 1}`;
+                const newKey = `${this.backupPrefix}${i}`;
+                const oldData = localStorage.getItem(oldKey);
+                if (oldData) {
+                    localStorage.setItem(newKey, oldData);
+                } else {
+                    localStorage.removeItem(newKey);
+                }
+            }
+            
+            // Create new backup
+            localStorage.setItem(`${this.backupPrefix}1`, currentData);
+        } catch (error) {
+            console.warn('Failed to create backup:', error);
+            // Don't throw - backup failure shouldn't prevent saving
+        }
+    }
+
+    handleQuotaExceeded() {
+        this.showNotification('Storage full! Consider archiving old exercise history.', 'error');
+        // Offer to compress/archive old history entries
+        // For now, just alert - could implement archiving UI later
+    }
+
+    showNotification(message, type = 'info') {
+        // Ensure DOM is ready
+        if (!document.body) {
+            console.log(`[${type.toUpperCase()}] ${message}`);
+            return;
+        }
+        
+        console.log(`[${type.toUpperCase()}] ${message}`);
+        
+        // Create temporary notification element
+        const notification = document.createElement('div');
+        notification.className = `notification notification-${type}`;
+        notification.textContent = message;
+        
+        document.body.appendChild(notification);
+        
+        setTimeout(() => {
+            notification.style.animation = 'slideOut 0.3s ease-out';
+            setTimeout(() => notification.remove(), 300);
+        }, 3000);
     }
 
 
@@ -1168,18 +1314,65 @@ class GymTracker {
 
 // Initialize app when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
-    new GymTracker();
+    window.gymTracker = new GymTracker();
 });
 
-// Register service worker
+// Register service worker with update handling
 if ('serviceWorker' in navigator) {
+    let refreshing = false;
+    
+    // Handle service worker updates
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (refreshing) return;
+        refreshing = true;
+        // Reload page when new service worker takes control
+        window.location.reload();
+    });
+    
     window.addEventListener('load', () => {
         navigator.serviceWorker.register('sw.js')
             .then(registration => {
-                console.log('SW registered: ', registration);
+                console.log('Service Worker registered:', registration);
+                
+                // Check for updates every hour
+                setInterval(() => {
+                    registration.update();
+                }, 3600000);
+                
+                // Listen for update found
+                registration.addEventListener('updatefound', () => {
+                    const newWorker = registration.installing;
+                    if (newWorker) {
+                        newWorker.addEventListener('statechange', () => {
+                            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                // New version available - show update notification
+                                const tracker = window.gymTracker;
+                                if (tracker && tracker.showNotification) {
+                                    tracker.showNotification('New version available! Reload to update.', 'info');
+                                }
+                            }
+                        });
+                    }
+                });
             })
             .catch(registrationError => {
-                console.log('SW registration failed: ', registrationError);
+                console.error('Service Worker registration failed:', registrationError);
             });
     });
 }
+
+// Offline/Online detection
+window.addEventListener('online', () => {
+    const tracker = window.gymTracker;
+    if (tracker && tracker.showNotification) {
+        tracker.showNotification('Back online', 'success');
+    }
+});
+
+window.addEventListener('offline', () => {
+    const tracker = window.gymTracker;
+    if (tracker && tracker.showNotification) {
+        tracker.showNotification('Working offline', 'info');
+    }
+});
+});
