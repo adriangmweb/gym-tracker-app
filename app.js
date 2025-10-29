@@ -12,15 +12,20 @@ class GymTracker {
     }
 
     init() {
-        this.initializeData();
-        this.bindEvents();
-        // Show loading briefly for smooth transition (200ms max)
-        this.showScreen('loading');
-        requestAnimationFrame(() => {
-            requestAnimationFrame(() => {
+        try {
+            this.initializeData();
+            this.bindEvents();
+            // Show loading briefly for smooth transition
+            this.showScreen('loading');
+            // Use setTimeout with minimal delay to ensure DOM is ready
+            setTimeout(() => {
                 this.showScreen('main');
-            });
-        });
+            }, 100);
+        } catch (error) {
+            console.error('Error during initialization:', error);
+            // Always show main screen even if there's an error
+            this.showScreen('main');
+        }
     }
 
     // Data Management
@@ -142,16 +147,20 @@ class GymTracker {
             
             const parsed = JSON.parse(data);
             
-            // Validate data structure integrity
-            if (!this.validateDataStructure(parsed)) {
+            // Validate data structure integrity (only if validateDataStructure exists)
+            if (this.validateDataStructure && !this.validateDataStructure(parsed)) {
                 console.warn('Data structure invalid, attempting recovery...');
-                const recovered = this.attemptDataRecovery();
-                if (recovered) {
-                    // Delay notification until DOM is ready
-                    setTimeout(() => {
-                        this.showNotification('Data recovered from backup', 'success');
-                    }, 100);
-                    return recovered;
+                if (this.attemptDataRecovery) {
+                    const recovered = this.attemptDataRecovery();
+                    if (recovered) {
+                        // Delay notification until DOM is ready
+                        setTimeout(() => {
+                            if (this.showNotification) {
+                                this.showNotification('Data recovered from backup', 'success');
+                            }
+                        }, 100);
+                        return recovered;
+                    }
                 }
                 // If recovery fails, return empty and let initializeData handle it
                 return {};
@@ -172,15 +181,24 @@ class GymTracker {
             return parsed;
         } catch (error) {
             console.error('Error loading data:', error);
-            // Attempt recovery from backups
-            const recovered = this.attemptDataRecovery();
-            if (recovered) {
-                // Delay notification until DOM is ready
-                setTimeout(() => {
-                    this.showNotification('Data recovered from backup after corruption', 'success');
-                }, 100);
-                return recovered;
+            // Attempt recovery from backups only if method exists
+            if (this.attemptDataRecovery) {
+                try {
+                    const recovered = this.attemptDataRecovery();
+                    if (recovered) {
+                        // Delay notification until DOM is ready
+                        setTimeout(() => {
+                            if (this.showNotification) {
+                                this.showNotification('Data recovered from backup after corruption', 'success');
+                            }
+                        }, 100);
+                        return recovered;
+                    }
+                } catch (recoveryError) {
+                    console.error('Recovery failed:', recoveryError);
+                }
             }
+            // Always return empty object if all else fails
             return {};
         }
     }
@@ -224,9 +242,13 @@ class GymTracker {
     validateDataStructure(data) {
         if (!data || typeof data !== 'object') return false;
         
+        // Empty object is valid (will be initialized)
+        if (Object.keys(data).length === 0) return true;
+        
         // Check if profiles exist and are valid
         if (data.profiles && typeof data.profiles === 'object') {
             for (const [key, profile] of Object.entries(data.profiles)) {
+                if (!profile || typeof profile !== 'object') return false;
                 if (!profile.name || !profile.exercises) return false;
             }
         }
@@ -332,23 +354,36 @@ class GymTracker {
 
     // Event Bindings
     bindEvents() {
-        // Profile selection
-        document.querySelectorAll('.profile-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const profile = e.currentTarget.dataset.profile;
-                this.selectProfile(profile);
-            });
-        });
+        try {
+            // Profile selection
+            const profileButtons = document.querySelectorAll('.profile-btn');
+            if (profileButtons.length === 0) {
+                console.warn('Profile buttons not found - DOM may not be ready');
+                // Don't return early - try to bind other events
+            } else {
+                profileButtons.forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        const profile = e.currentTarget.dataset.profile;
+                        this.selectProfile(profile);
+                    });
+                });
+            }
 
         // Navigation
-        document.getElementById('back-to-main').addEventListener('click', () => {
-            this.showScreen('main');
-        });
+        const backToMain = document.getElementById('back-to-main');
+        if (backToMain) {
+            backToMain.addEventListener('click', () => {
+                this.showScreen('main');
+            });
+        }
 
-        document.getElementById('back-to-groups').addEventListener('click', () => {
-            this.updateMuscleGroupButtons();
-            this.showScreen('muscle-groups');
-        });
+        const backToGroups = document.getElementById('back-to-groups');
+        if (backToGroups) {
+            backToGroups.addEventListener('click', () => {
+                this.updateMuscleGroupButtons();
+                this.showScreen('muscle-groups');
+            });
+        }
 
         // Muscle group selection
         document.querySelectorAll('.muscle-group-btn').forEach(btn => {
@@ -359,145 +394,266 @@ class GymTracker {
         });
 
         // Modal events
-        document.getElementById('cancel-edit').addEventListener('click', () => {
-            this.hideModal();
-        });
+        const cancelEdit = document.getElementById('cancel-edit');
+        if (cancelEdit) {
+            cancelEdit.addEventListener('click', () => {
+                this.hideModal();
+            });
+        }
 
-        document.getElementById('save-edit').addEventListener('click', () => {
-            this.saveExercise();
-        });
+        const saveEdit = document.getElementById('save-edit');
+        if (saveEdit) {
+            saveEdit.addEventListener('click', () => {
+                this.saveExercise();
+            });
+        }
 
         // Close modal on backdrop click
-        document.getElementById('edit-modal').addEventListener('click', (e) => {
-            if (e.target === e.currentTarget) {
-                this.hideModal();
-            }
-        });
+        const editModal = document.getElementById('edit-modal');
+        if (editModal) {
+            editModal.addEventListener('click', (e) => {
+                if (e.target === e.currentTarget) {
+                    this.hideModal();
+                }
+            });
+        }
 
         // Enter key in input
-        document.getElementById('exercise-value').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                this.saveExercise();
-            }
-        });
+        const exerciseValue = document.getElementById('exercise-value');
+        if (exerciseValue) {
+            exerciseValue.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    this.saveExercise();
+                }
+            });
+        }
 
         // Add exercise events
-        document.getElementById('add-exercise-btn').addEventListener('click', () => {
-            this.showAddModal();
-        });
+        const addExerciseBtn = document.getElementById('add-exercise-btn');
+        if (addExerciseBtn) {
+            addExerciseBtn.addEventListener('click', () => {
+                this.showAddModal();
+            });
+        }
 
-        document.getElementById('cancel-add').addEventListener('click', () => {
-            this.hideAddModal();
-        });
+        const cancelAdd = document.getElementById('cancel-add');
+        if (cancelAdd) {
+            cancelAdd.addEventListener('click', () => {
+                this.hideAddModal();
+            });
+        }
 
-        document.getElementById('save-add').addEventListener('click', () => {
-            this.addNewExercise();
-        });
+        const saveAdd = document.getElementById('save-add');
+        if (saveAdd) {
+            saveAdd.addEventListener('click', () => {
+                this.addNewExercise();
+            });
+        }
 
         // Close add modal on backdrop click
-        document.getElementById('add-modal').addEventListener('click', (e) => {
-            if (e.target === e.currentTarget) {
-                this.hideAddModal();
-            }
-        });
+        const addModal = document.getElementById('add-modal');
+        if (addModal) {
+            addModal.addEventListener('click', (e) => {
+                if (e.target === e.currentTarget) {
+                    this.hideAddModal();
+                }
+            });
+        }
 
         // Enter key in add modal inputs
-        document.getElementById('new-exercise-name').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                document.getElementById('new-exercise-value').focus();
-            }
-        });
+        const newExerciseName = document.getElementById('new-exercise-name');
+        if (newExerciseName) {
+            newExerciseName.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    const newExerciseValue = document.getElementById('new-exercise-value');
+                    if (newExerciseValue) newExerciseValue.focus();
+                }
+            });
+        }
 
-        document.getElementById('new-exercise-value').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                this.addNewExercise();
-            }
-        });
+        const newExerciseValue = document.getElementById('new-exercise-value');
+        if (newExerciseValue) {
+            newExerciseValue.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    this.addNewExercise();
+                }
+            });
+        }
 
         // Full history events
-        document.getElementById('see-all-history').addEventListener('click', () => {
-            this.showFullHistory();
-        });
+        const seeAllHistory = document.getElementById('see-all-history');
+        if (seeAllHistory) {
+            seeAllHistory.addEventListener('click', () => {
+                this.showFullHistory();
+            });
+        }
 
-        document.getElementById('back-to-edit').addEventListener('click', () => {
-            this.hideFullHistory();
-        });
+        const backToEdit = document.getElementById('back-to-edit');
+        if (backToEdit) {
+            backToEdit.addEventListener('click', () => {
+                this.hideFullHistory();
+            });
+        }
 
         // Close full history modal on backdrop click
-        document.getElementById('full-history-modal').addEventListener('click', (e) => {
-            if (e.target === e.currentTarget) {
-                this.hideFullHistory();
-            }
-        });
+        const fullHistoryModal = document.getElementById('full-history-modal');
+        if (fullHistoryModal) {
+            fullHistoryModal.addEventListener('click', (e) => {
+                if (e.target === e.currentTarget) {
+                    this.hideFullHistory();
+                }
+            });
+        }
 
         // Edit exercise name in modal
-        document.getElementById('edit-name-btn').addEventListener('click', () => {
-            this.editExerciseName(this.currentExercise);
-        });
+        const editNameBtn = document.getElementById('edit-name-btn');
+        if (editNameBtn) {
+            editNameBtn.addEventListener('click', () => {
+                this.editExerciseName(this.currentExercise);
+            });
+        }
 
         // Edit muscle group name
-        document.getElementById('edit-muscle-group-btn').addEventListener('click', () => {
-            this.editMuscleGroupName(this.currentMuscleGroup);
-        });
+        const editMuscleGroupBtn = document.getElementById('edit-muscle-group-btn');
+        if (editMuscleGroupBtn) {
+            editMuscleGroupBtn.addEventListener('click', () => {
+                this.editMuscleGroupName(this.currentMuscleGroup);
+            });
+        }
 
         // Settings navigation
-        document.getElementById('settings-btn').addEventListener('click', () => {
-            this.showScreen('settings');
-        });
+        const settingsBtn = document.getElementById('settings-btn');
+        if (settingsBtn) {
+            settingsBtn.addEventListener('click', () => {
+                this.showScreen('settings');
+            });
+        }
 
-        document.getElementById('back-to-main-settings').addEventListener('click', () => {
-            this.showScreen('main');
-        });
+        const backToMainSettings = document.getElementById('back-to-main-settings');
+        if (backToMainSettings) {
+            backToMainSettings.addEventListener('click', () => {
+                this.showScreen('main');
+            });
+        }
 
         // Export/Import functionality
-        document.getElementById('export-data-btn').addEventListener('click', () => {
-            this.exportData();
-        });
+        const exportDataBtn = document.getElementById('export-data-btn');
+        if (exportDataBtn) {
+            exportDataBtn.addEventListener('click', () => {
+                this.exportData();
+            });
+        }
 
-        document.getElementById('import-data-btn').addEventListener('click', () => {
-            this.showImportModal();
-        });
+        const importDataBtn = document.getElementById('import-data-btn');
+        if (importDataBtn) {
+            importDataBtn.addEventListener('click', () => {
+                this.showImportModal();
+            });
+        }
 
-        document.getElementById('cancel-import').addEventListener('click', () => {
-            this.hideImportModal();
-        });
+        const cancelImport = document.getElementById('cancel-import');
+        if (cancelImport) {
+            cancelImport.addEventListener('click', () => {
+                this.hideImportModal();
+            });
+        }
 
-        document.getElementById('select-file-btn').addEventListener('click', () => {
-            document.getElementById('import-file').click();
-        });
+        const selectFileBtn = document.getElementById('select-file-btn');
+        const importFile = document.getElementById('import-file');
+        if (selectFileBtn && importFile) {
+            selectFileBtn.addEventListener('click', () => {
+                importFile.click();
+            });
+        }
 
-        document.getElementById('import-file').addEventListener('change', (e) => {
-            this.importFromFile(e.target.files[0]);
-        });
+        if (importFile) {
+            importFile.addEventListener('change', (e) => {
+                this.importFromFile(e.target.files[0]);
+            });
+        }
 
-        document.getElementById('clipboard-import-btn').addEventListener('click', () => {
-            this.importFromClipboard();
-        });
+        const clipboardImportBtn = document.getElementById('clipboard-import-btn');
+        if (clipboardImportBtn) {
+            clipboardImportBtn.addEventListener('click', () => {
+                this.importFromClipboard();
+            });
+        }
 
-        document.getElementById('close-import-result').addEventListener('click', () => {
-            this.hideImportResultModal();
-        });
+        const closeImportResult = document.getElementById('close-import-result');
+        if (closeImportResult) {
+            closeImportResult.addEventListener('click', () => {
+                this.hideImportResultModal();
+            });
+        }
 
         // Close import modal on backdrop click
-        document.getElementById('import-modal').addEventListener('click', (e) => {
-            if (e.target === e.currentTarget) {
-                this.hideImportModal();
-            }
-        });
+        const importModal = document.getElementById('import-modal');
+        if (importModal) {
+            importModal.addEventListener('click', (e) => {
+                if (e.target === e.currentTarget) {
+                    this.hideImportModal();
+                }
+            });
+        }
 
+<<<<<<< HEAD
         document.getElementById('import-result-modal').addEventListener('click', (e) => {
             if (e.target === e.currentTarget) {
                 this.hideImportResultModal();
             }
         });
+=======
+        const importResultModal = document.getElementById('import-result-modal');
+        if (importResultModal) {
+            importResultModal.addEventListener('click', (e) => {
+                if (e.target === e.currentTarget) {
+                    this.hideImportResultModal();
+                }
+            });
+        }
+
+        // Switch user button
+        const switchUserBtn = document.getElementById('switch-user-btn');
+        if (switchUserBtn) {
+            switchUserBtn.addEventListener('click', () => {
+                this.switchUser();
+            });
+        }
+        } catch (error) {
+            console.error('Error binding events:', error);
+            // Ensure main screen is shown even if event binding fails
+            setTimeout(() => {
+                this.showScreen('main');
+            }, 100);
+        }
+>>>>>>> 589278a (Enhance error handling and DOM readiness checks in GymTracker initialization and event binding. Added try-catch blocks to manage potential errors during data initialization, event binding, and screen transitions. Improved validation checks for data structure and event listeners to ensure robustness against missing elements. This update aims to provide a smoother user experience by ensuring the main screen is displayed even in case of errors.)
     }
 
     // Navigation
     showScreen(screenName) {
-        document.querySelectorAll('.screen').forEach(screen => {
-            screen.classList.add('hidden');
-        });
-        document.getElementById(`${screenName}-screen`).classList.remove('hidden');
+        try {
+            document.querySelectorAll('.screen').forEach(screen => {
+                screen.classList.add('hidden');
+            });
+            const targetScreen = document.getElementById(`${screenName}-screen`);
+            if (targetScreen) {
+                targetScreen.classList.remove('hidden');
+            } else {
+                console.error(`Screen ${screenName}-screen not found`);
+                // Fallback to main screen
+                const mainScreen = document.getElementById('main-screen');
+                if (mainScreen) {
+                    mainScreen.classList.remove('hidden');
+                }
+            }
+        } catch (error) {
+            console.error('Error showing screen:', error);
+            // Ensure at least main screen is visible
+            const mainScreen = document.getElementById('main-screen');
+            if (mainScreen) {
+                mainScreen.classList.remove('hidden');
+            }
+        }
     }
 
     selectProfile(profileKey) {
@@ -1314,7 +1470,16 @@ class GymTracker {
 
 // Initialize app when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
-    window.gymTracker = new GymTracker();
+    try {
+        window.gymTracker = new GymTracker();
+    } catch (error) {
+        console.error('Failed to initialize GymTracker:', error);
+        // Fallback: ensure main screen is shown
+        const loadingScreen = document.getElementById('loading-screen');
+        const mainScreen = document.getElementById('main-screen');
+        if (loadingScreen) loadingScreen.classList.add('hidden');
+        if (mainScreen) mainScreen.classList.remove('hidden');
+    }
 });
 
 // Register service worker with update handling
