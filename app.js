@@ -1642,4 +1642,3 @@ window.addEventListener('offline', () => {
         tracker.showNotification('Working offline', 'info');
     }
 });
-});
