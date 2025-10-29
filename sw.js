@@ -1,12 +1,13 @@
-const CACHE_NAME = 'gym-tracker-v1';
+const CACHE_VERSION = 'v1.0.1';
+const CACHE_NAME = `gym-tracker-${CACHE_VERSION}`;
 const urlsToCache = [
     '/',
     '/index.html',
     '/styles.css',
     '/app.js',
     '/manifest.json',
-    '/icons/icon-192x192.png',
-    '/icons/icon-512x512.png'
+    '/icons/icon-192x192.svg',
+    '/icons/icon-512x512.svg'
 ];
 
 // Install event - cache resources
@@ -20,16 +21,33 @@ self.addEventListener('install', event => {
     );
 });
 
-// Fetch event - serve from cache when offline
+// Fetch event - Network-first with cache fallback (stale-while-revalidate)
 self.addEventListener('fetch', event => {
+    // Only handle GET requests
+    if (event.request.method !== 'GET') return;
+    
     event.respondWith(
-        caches.match(event.request)
+        fetch(event.request)
             .then(response => {
-                // Return cached version or fetch from network
-                if (response) {
-                    return response;
-                }
-                return fetch(event.request);
+                // Network succeeded - update cache
+                const responseClone = response.clone();
+                caches.open(CACHE_NAME).then(cache => {
+                    cache.put(event.request, responseClone);
+                });
+                return response;
+            })
+            .catch(() => {
+                // Network failed - serve from cache
+                return caches.match(event.request)
+                    .then(cachedResponse => {
+                        if (cachedResponse) {
+                            return cachedResponse;
+                        }
+                        // Fallback for navigation requests - serve index.html
+                        if (event.request.mode === 'navigate') {
+                            return caches.match('/index.html');
+                        }
+                    });
             })
     );
 });

@@ -1,21 +1,83 @@
 class GymTracker {
     constructor() {
-        this.currentProfile = null;
-        this.currentMuscleGroup = null;
-        this.currentExercise = null;
-        this.data = this.loadData();
-        this.init();
+        try {
+            this.currentProfile = null;
+            this.currentMuscleGroup = null;
+            this.currentExercise = null;
+            this.saveDebounceTimer = null;
+            this.saveDebounceDelay = 300; // 300ms debounce for saves
+            this.backupPrefix = 'gymTrackerBackup_';
+            this.maxBackups = 3; // Keep last 3 backups
+            
+            // Load data safely - if it fails, use empty object
+            try {
+                this.data = this.loadData();
+            } catch (error) {
+                console.error('Error loading data in constructor:', error);
+                this.data = {};
+            }
+            
+            // Always call init, even if data loading failed
+            this.init();
+        } catch (error) {
+            console.error('Critical error in constructor:', error);
+            // Last resort: try to show main screen directly
+            setTimeout(() => {
+                const loadingScreen = document.getElementById('loading-screen');
+                const mainScreen = document.getElementById('main-screen');
+                if (loadingScreen) loadingScreen.classList.add('hidden');
+                if (mainScreen) mainScreen.classList.remove('hidden');
+            }, 100);
+        }
     }
 
     init() {
-        this.initializeData();
-        this.bindEvents();
-        this.showScreen('loading');
-        
-        // Simulate loading time
-        setTimeout(() => {
-            this.showScreen('main');
-        }, 1500);
+        try {
+            // Ensure DOM is ready
+            if (!document.body) {
+                // Wait for DOM
+                setTimeout(() => this.init(), 50);
+                return;
+            }
+            
+            this.initializeData();
+            
+            // Validate data now that all methods are available
+            if (this.validateDataStructure && !this.validateDataStructure(this.data)) {
+                console.warn('Data structure invalid, attempting recovery...');
+                if (this.attemptDataRecovery) {
+                    const recovered = this.attemptDataRecovery();
+                    if (recovered) {
+                        this.data = recovered;
+                        setTimeout(() => {
+                            if (this.showNotification) {
+                                this.showNotification('Data recovered from backup', 'success');
+                            }
+                        }, 500);
+                    } else {
+                        // Reset to empty and let initializeData create defaults
+                        this.data = {};
+                        this.initializeData();
+                    }
+                }
+            }
+            
+            this.bindEvents();
+            
+            // Show loading briefly for smooth transition
+            this.showScreen('loading');
+            
+            // Use setTimeout with minimal delay to ensure DOM is ready
+            setTimeout(() => {
+                this.showScreen('main');
+            }, 100);
+        } catch (error) {
+            console.error('Error during initialization:', error);
+            // Always show main screen even if there's an error
+            setTimeout(() => {
+                this.showScreen('main');
+            }, 100);
+        }
     }
 
     // Data Management
@@ -29,111 +91,146 @@ class GymTracker {
     }
 
     initializeData() {
-        if (!this.data.profiles) {
-            this.data = {
-                muscleGroupNames: {
-                    back: 'Back',
-                    biceps: 'Biceps', 
-                    legs: 'Legs',
-                    triceps: 'Triceps',
-                    shoulders: 'Shoulders',
-                    chest: 'Chest'
-                },
-                profiles: {
-                    elena: {
-                        name: 'Elena',
-                        exercises: {
-                            back: {
-                                'Upper back': this.createExercise('25kg'),
-                                'Low row': this.createExercise('45kg'),
-                                'Lat pulldown': this.createExercise('30kg'),
-                                'Pulley': this.createExercise('25kg'),
-                                'Pull-ups': this.createExercise('30kg')
-                            },
-                            biceps: {
-                                'Bicep machine': this.createExercise('16kg'),
-                                'Dumbbell curl': this.createExercise('12.5kg'),
-                                'Cable curl': this.createExercise('12.5kg')
-                            },
-                            legs: {
-                                'Abductor': this.createExercise('55kg'),
-                                'Leg extension': this.createExercise('35kg'),
-                                'Prone leg curl': this.createExercise('30kg'),
-                                'Leg curl': this.createExercise('35kg'),
-                                'Leg press': this.createExercise('90kg'),
-                                'Deadlift': this.createExercise('20kg'),
-                                'Calves': this.createExercise('80kg'),
-                                'Inner thigh': this.createExercise('35kg')
-                            },
-                            triceps: {
-                                'Tricep kickbacks': this.createExercise('9kg'),
-                                'Cable bar': this.createExercise('20kg'),
-                                'French press': this.createExercise('10kg'),
-                                'Cable french press': this.createExercise('12.5kg')
-                            },
-                            shoulders: {
-                                'Military press': this.createExercise('7.5kg'),
-                                'Lateral raises': this.createExercise('7kg'),
-                                'Face pull': this.createExercise('16kg'),
-                                'Shoulder press': this.createExercise('15kg')
-                            },
-                            chest: {
-                                'Chest fly': this.createExercise('20kg'),
-                                'Chest press': this.createExercise('25kg')
-                            }
-                        }
+        try {
+            // Ensure data object exists
+            if (!this.data) {
+                this.data = {};
+            }
+            
+            if (!this.data.profiles) {
+                this.data = {
+                    muscleGroupNames: {
+                        back: 'Back',
+                        biceps: 'Biceps', 
+                        legs: 'Legs',
+                        triceps: 'Triceps',
+                        shoulders: 'Shoulders',
+                        chest: 'Chest'
                     },
-                    adri: {
-                        name: 'Adri',
-                        exercises: {
-                            biceps: {
-                                'Bicep machine': this.createExercise('41kg'),
-                                'Hammer curl': this.createExercise('15kg'),
-                                'Cable curl': this.createExercise('17kg')
-                            },
-                            triceps: {
-                                'Cable bar': this.createExercise('20kg'),
-                                'Kickbacks': this.createExercise('12kg'),
-                                'Standing french press': this.createExercise('12kg'),
-                                'Cable french press': this.createExercise('15kg')
-                            },
-                            back: {
-                                'Low row': this.createExercise('55kg'),
-                                'Upper back': this.createExercise('35kg'),
-                                'Pulley': this.createExercise('30kg'),
-                                'Lat pulldown': this.createExercise('45kg')
-                            },
-                            legs: {
-                                'Leg extension': this.createExercise('45kg'),
-                                'Leg press': this.createExercise('80kg'),
-                                'Prone leg curl': this.createExercise('32kg'),
-                                'Leg curl': this.createExercise('40kg'),
-                                'Abductor': this.createExercise('45kg'),
-                                'Calves': this.createExercise('80kg'),
-                                'Inner thigh': this.createExercise('20kg')
-                            },
-                            chest: {
-                                'Chest press': this.createExercise('50kg'),
-                                'Chest fly': this.createExercise('40kg')
-                            },
-                            shoulders: {
-                                'Military press': this.createExercise('12.5kg'),
-                                'Shoulder fly': this.createExercise('7.5kg'),
-                                'Face pull': this.createExercise('15kg'),
-                                'Shoulder press': this.createExercise('35kg')
+                    profiles: {
+                        elena: {
+                            name: 'Elena',
+                            exercises: {
+                                back: {
+                                    'Upper back': this.createExercise('25kg'),
+                                    'Low row': this.createExercise('45kg'),
+                                    'Lat pulldown': this.createExercise('30kg'),
+                                    'Pulley': this.createExercise('25kg'),
+                                    'Pull-ups': this.createExercise('30kg')
+                                },
+                                biceps: {
+                                    'Bicep machine': this.createExercise('16kg'),
+                                    'Dumbbell curl': this.createExercise('12.5kg'),
+                                    'Cable curl': this.createExercise('12.5kg')
+                                },
+                                legs: {
+                                    'Abductor': this.createExercise('55kg'),
+                                    'Leg extension': this.createExercise('35kg'),
+                                    'Prone leg curl': this.createExercise('30kg'),
+                                    'Leg curl': this.createExercise('35kg'),
+                                    'Leg press': this.createExercise('90kg'),
+                                    'Deadlift': this.createExercise('20kg'),
+                                    'Calves': this.createExercise('80kg'),
+                                    'Inner thigh': this.createExercise('35kg')
+                                },
+                                triceps: {
+                                    'Tricep kickbacks': this.createExercise('9kg'),
+                                    'Cable bar': this.createExercise('20kg'),
+                                    'French press': this.createExercise('10kg'),
+                                    'Cable french press': this.createExercise('12.5kg')
+                                },
+                                shoulders: {
+                                    'Military press': this.createExercise('7.5kg'),
+                                    'Lateral raises': this.createExercise('7kg'),
+                                    'Face pull': this.createExercise('16kg'),
+                                    'Shoulder press': this.createExercise('15kg')
+                                },
+                                chest: {
+                                    'Chest fly': this.createExercise('20kg'),
+                                    'Chest press': this.createExercise('25kg')
+                                }
+                            }
+                        },
+                        adri: {
+                            name: 'Adri',
+                            exercises: {
+                                biceps: {
+                                    'Bicep machine': this.createExercise('41kg'),
+                                    'Hammer curl': this.createExercise('15kg'),
+                                    'Cable curl': this.createExercise('17kg')
+                                },
+                                triceps: {
+                                    'Cable bar': this.createExercise('20kg'),
+                                    'Kickbacks': this.createExercise('12kg'),
+                                    'Standing french press': this.createExercise('12kg'),
+                                    'Cable french press': this.createExercise('15kg')
+                                },
+                                back: {
+                                    'Low row': this.createExercise('55kg'),
+                                    'Upper back': this.createExercise('35kg'),
+                                    'Pulley': this.createExercise('30kg'),
+                                    'Lat pulldown': this.createExercise('45kg')
+                                },
+                                legs: {
+                                    'Leg extension': this.createExercise('45kg'),
+                                    'Leg press': this.createExercise('80kg'),
+                                    'Prone leg curl': this.createExercise('32kg'),
+                                    'Leg curl': this.createExercise('40kg'),
+                                    'Abductor': this.createExercise('45kg'),
+                                    'Calves': this.createExercise('80kg'),
+                                    'Inner thigh': this.createExercise('20kg')
+                                },
+                                chest: {
+                                    'Chest press': this.createExercise('50kg'),
+                                    'Chest fly': this.createExercise('40kg')
+                                },
+                                shoulders: {
+                                    'Military press': this.createExercise('12.5kg'),
+                                    'Shoulder fly': this.createExercise('7.5kg'),
+                                    'Face pull': this.createExercise('15kg'),
+                                    'Shoulder press': this.createExercise('35kg')
+                                }
                             }
                         }
                     }
+                };
+                
+                // Try to save, but don't fail if it doesn't work
+                try {
+                    this.saveData();
+                } catch (saveError) {
+                    console.warn('Could not save initial data:', saveError);
                 }
-            };
-            this.saveData();
+            }
+        } catch (error) {
+            console.error('Error initializing data:', error);
+            // Ensure we have at least an empty structure
+            if (!this.data) {
+                this.data = {};
+            }
         }
     }
 
     loadData() {
         try {
+            // Check if localStorage is available
+            if (typeof localStorage === 'undefined') {
+                console.warn('localStorage not available');
+                return {};
+            }
+            
             const data = localStorage.getItem('gymTrackerData');
-            const parsed = data ? JSON.parse(data) : {};
+            if (!data) return {};
+            
+            const parsed = JSON.parse(data);
+            
+            // Basic validation - check if it's an object
+            if (!parsed || typeof parsed !== 'object') {
+                return {};
+            }
+            
+            // Skip advanced validation if methods don't exist yet (constructor phase)
+            // Will be validated again after class is fully initialized if needed
             
             // Backward compatibility: add muscleGroupNames if missing
             if (parsed.profiles && !parsed.muscleGroupNames) {
@@ -150,16 +247,136 @@ class GymTracker {
             return parsed;
         } catch (error) {
             console.error('Error loading data:', error);
+            // Always return empty object if all else fails
             return {};
         }
     }
 
     saveData() {
+        // Clear existing debounce timer
+        clearTimeout(this.saveDebounceTimer);
+        
+        // Set new timer for debounced save
+        this.saveDebounceTimer = setTimeout(() => {
+            this.performSave();
+        }, this.saveDebounceDelay);
+    }
+
+    performSave() {
         try {
-            localStorage.setItem('gymTrackerData', JSON.stringify(this.data));
+            const dataString = JSON.stringify(this.data);
+            const sizeInMB = new Blob([dataString]).size / (1024 * 1024);
+            
+            // Warn if approaching localStorage limit (80% of typical 5MB limit)
+            if (sizeInMB > 4) {
+                console.warn(`Storage usage: ${sizeInMB.toFixed(2)}MB`);
+                this.showNotification(`Storage usage high: ${sizeInMB.toFixed(2)}MB. Consider archiving old history.`, 'warning');
+            }
+            
+            // Create backup before saving
+            this.createBackup();
+            
+            localStorage.setItem('gymTrackerData', dataString);
         } catch (error) {
-            console.error('Error saving data:', error);
+            if (error.name === 'QuotaExceededError') {
+                console.error('Storage quota exceeded');
+                this.handleQuotaExceeded();
+            } else {
+                console.error('Error saving data:', error);
+                this.showNotification('Failed to save data. Please try again.', 'error');
+            }
         }
+    }
+
+    validateDataStructure(data) {
+        if (!data || typeof data !== 'object') return false;
+        
+        // Empty object is valid (will be initialized)
+        if (Object.keys(data).length === 0) return true;
+        
+        // Check if profiles exist and are valid
+        if (data.profiles && typeof data.profiles === 'object') {
+            for (const [key, profile] of Object.entries(data.profiles)) {
+                if (!profile || typeof profile !== 'object') return false;
+                if (!profile.name || !profile.exercises) return false;
+            }
+        }
+        
+        return true;
+    }
+
+    attemptDataRecovery() {
+        // Try to recover from most recent backup
+        for (let i = this.maxBackups; i >= 1; i--) {
+            try {
+                const backupKey = `${this.backupPrefix}${i}`;
+                const backupData = localStorage.getItem(backupKey);
+                if (backupData) {
+                    const parsed = JSON.parse(backupData);
+                    if (this.validateDataStructure(parsed)) {
+                        console.log(`Recovered from backup ${i}`);
+                        return parsed;
+                    }
+                }
+            } catch (error) {
+                console.warn(`Backup ${i} corrupted, trying next...`);
+                continue;
+            }
+        }
+        return null;
+    }
+
+    createBackup() {
+        try {
+            const currentData = localStorage.getItem('gymTrackerData');
+            if (!currentData) return;
+            
+            // Shift existing backups (keep only last 3)
+            for (let i = this.maxBackups; i > 1; i--) {
+                const oldKey = `${this.backupPrefix}${i - 1}`;
+                const newKey = `${this.backupPrefix}${i}`;
+                const oldData = localStorage.getItem(oldKey);
+                if (oldData) {
+                    localStorage.setItem(newKey, oldData);
+                } else {
+                    localStorage.removeItem(newKey);
+                }
+            }
+            
+            // Create new backup
+            localStorage.setItem(`${this.backupPrefix}1`, currentData);
+        } catch (error) {
+            console.warn('Failed to create backup:', error);
+            // Don't throw - backup failure shouldn't prevent saving
+        }
+    }
+
+    handleQuotaExceeded() {
+        this.showNotification('Storage full! Consider archiving old exercise history.', 'error');
+        // Offer to compress/archive old history entries
+        // For now, just alert - could implement archiving UI later
+    }
+
+    showNotification(message, type = 'info') {
+        // Ensure DOM is ready
+        if (!document.body) {
+            console.log(`[${type.toUpperCase()}] ${message}`);
+            return;
+        }
+        
+        console.log(`[${type.toUpperCase()}] ${message}`);
+        
+        // Create temporary notification element
+        const notification = document.createElement('div');
+        notification.className = `notification notification-${type}`;
+        notification.textContent = message;
+        
+        document.body.appendChild(notification);
+        
+        setTimeout(() => {
+            notification.style.animation = 'slideOut 0.3s ease-out';
+            setTimeout(() => notification.remove(), 300);
+        }, 3000);
     }
 
 
@@ -186,23 +403,36 @@ class GymTracker {
 
     // Event Bindings
     bindEvents() {
-        // Profile selection
-        document.querySelectorAll('.profile-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const profile = e.currentTarget.dataset.profile;
-                this.selectProfile(profile);
-            });
-        });
+        try {
+            // Profile selection
+            const profileButtons = document.querySelectorAll('.profile-btn');
+            if (profileButtons.length === 0) {
+                console.warn('Profile buttons not found - DOM may not be ready');
+                // Don't return early - try to bind other events
+            } else {
+                profileButtons.forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        const profile = e.currentTarget.dataset.profile;
+                        this.selectProfile(profile);
+                    });
+                });
+            }
 
         // Navigation
-        document.getElementById('back-to-main').addEventListener('click', () => {
-            this.showScreen('main');
-        });
+        const backToMain = document.getElementById('back-to-main');
+        if (backToMain) {
+            backToMain.addEventListener('click', () => {
+                this.showScreen('main');
+            });
+        }
 
-        document.getElementById('back-to-groups').addEventListener('click', () => {
-            this.updateMuscleGroupButtons();
-            this.showScreen('muscle-groups');
-        });
+        const backToGroups = document.getElementById('back-to-groups');
+        if (backToGroups) {
+            backToGroups.addEventListener('click', () => {
+                this.updateMuscleGroupButtons();
+                this.showScreen('muscle-groups');
+            });
+        }
 
         // Muscle group selection
         document.querySelectorAll('.muscle-group-btn').forEach(btn => {
@@ -213,150 +443,258 @@ class GymTracker {
         });
 
         // Modal events
-        document.getElementById('cancel-edit').addEventListener('click', () => {
-            this.hideModal();
-        });
+        const cancelEdit = document.getElementById('cancel-edit');
+        if (cancelEdit) {
+            cancelEdit.addEventListener('click', () => {
+                this.hideModal();
+            });
+        }
 
-        document.getElementById('save-edit').addEventListener('click', () => {
-            this.saveExercise();
-        });
+        const saveEdit = document.getElementById('save-edit');
+        if (saveEdit) {
+            saveEdit.addEventListener('click', () => {
+                this.saveExercise();
+            });
+        }
 
         // Close modal on backdrop click
-        document.getElementById('edit-modal').addEventListener('click', (e) => {
-            if (e.target === e.currentTarget) {
-                this.hideModal();
-            }
-        });
+        const editModal = document.getElementById('edit-modal');
+        if (editModal) {
+            editModal.addEventListener('click', (e) => {
+                if (e.target === e.currentTarget) {
+                    this.hideModal();
+                }
+            });
+        }
 
         // Enter key in input
-        document.getElementById('exercise-value').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                this.saveExercise();
-            }
-        });
+        const exerciseValue = document.getElementById('exercise-value');
+        if (exerciseValue) {
+            exerciseValue.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    this.saveExercise();
+                }
+            });
+        }
 
         // Add exercise events
-        document.getElementById('add-exercise-btn').addEventListener('click', () => {
-            this.showAddModal();
-        });
+        const addExerciseBtn = document.getElementById('add-exercise-btn');
+        if (addExerciseBtn) {
+            addExerciseBtn.addEventListener('click', () => {
+                this.showAddModal();
+            });
+        }
 
-        document.getElementById('cancel-add').addEventListener('click', () => {
-            this.hideAddModal();
-        });
+        const cancelAdd = document.getElementById('cancel-add');
+        if (cancelAdd) {
+            cancelAdd.addEventListener('click', () => {
+                this.hideAddModal();
+            });
+        }
 
-        document.getElementById('save-add').addEventListener('click', () => {
-            this.addNewExercise();
-        });
+        const saveAdd = document.getElementById('save-add');
+        if (saveAdd) {
+            saveAdd.addEventListener('click', () => {
+                this.addNewExercise();
+            });
+        }
 
         // Close add modal on backdrop click
-        document.getElementById('add-modal').addEventListener('click', (e) => {
-            if (e.target === e.currentTarget) {
-                this.hideAddModal();
-            }
-        });
+        const addModal = document.getElementById('add-modal');
+        if (addModal) {
+            addModal.addEventListener('click', (e) => {
+                if (e.target === e.currentTarget) {
+                    this.hideAddModal();
+                }
+            });
+        }
 
         // Enter key in add modal inputs
-        document.getElementById('new-exercise-name').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                document.getElementById('new-exercise-value').focus();
-            }
-        });
+        const newExerciseName = document.getElementById('new-exercise-name');
+        if (newExerciseName) {
+            newExerciseName.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    const newExerciseValue = document.getElementById('new-exercise-value');
+                    if (newExerciseValue) newExerciseValue.focus();
+                }
+            });
+        }
 
-        document.getElementById('new-exercise-value').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                this.addNewExercise();
-            }
-        });
+        const newExerciseValue = document.getElementById('new-exercise-value');
+        if (newExerciseValue) {
+            newExerciseValue.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    this.addNewExercise();
+                }
+            });
+        }
 
         // Full history events
-        document.getElementById('see-all-history').addEventListener('click', () => {
-            this.showFullHistory();
-        });
+        const seeAllHistory = document.getElementById('see-all-history');
+        if (seeAllHistory) {
+            seeAllHistory.addEventListener('click', () => {
+                this.showFullHistory();
+            });
+        }
 
-        document.getElementById('back-to-edit').addEventListener('click', () => {
-            this.hideFullHistory();
-        });
+        const backToEdit = document.getElementById('back-to-edit');
+        if (backToEdit) {
+            backToEdit.addEventListener('click', () => {
+                this.hideFullHistory();
+            });
+        }
 
         // Close full history modal on backdrop click
-        document.getElementById('full-history-modal').addEventListener('click', (e) => {
-            if (e.target === e.currentTarget) {
-                this.hideFullHistory();
-            }
-        });
+        const fullHistoryModal = document.getElementById('full-history-modal');
+        if (fullHistoryModal) {
+            fullHistoryModal.addEventListener('click', (e) => {
+                if (e.target === e.currentTarget) {
+                    this.hideFullHistory();
+                }
+            });
+        }
 
         // Edit exercise name in modal
-        document.getElementById('edit-name-btn').addEventListener('click', () => {
-            this.editExerciseName(this.currentExercise);
-        });
+        const editNameBtn = document.getElementById('edit-name-btn');
+        if (editNameBtn) {
+            editNameBtn.addEventListener('click', () => {
+                this.editExerciseName(this.currentExercise);
+            });
+        }
 
         // Edit muscle group name
-        document.getElementById('edit-muscle-group-btn').addEventListener('click', () => {
-            this.editMuscleGroupName(this.currentMuscleGroup);
-        });
+        const editMuscleGroupBtn = document.getElementById('edit-muscle-group-btn');
+        if (editMuscleGroupBtn) {
+            editMuscleGroupBtn.addEventListener('click', () => {
+                this.editMuscleGroupName(this.currentMuscleGroup);
+            });
+        }
 
         // Settings navigation
-        document.getElementById('settings-btn').addEventListener('click', () => {
-            this.showScreen('settings');
-        });
+        const settingsBtn = document.getElementById('settings-btn');
+        if (settingsBtn) {
+            settingsBtn.addEventListener('click', () => {
+                this.showScreen('settings');
+            });
+        }
 
-        document.getElementById('back-to-main-settings').addEventListener('click', () => {
-            this.showScreen('main');
-        });
+        const backToMainSettings = document.getElementById('back-to-main-settings');
+        if (backToMainSettings) {
+            backToMainSettings.addEventListener('click', () => {
+                this.showScreen('main');
+            });
+        }
 
         // Export/Import functionality
-        document.getElementById('export-data-btn').addEventListener('click', () => {
-            this.exportData();
-        });
+        const exportDataBtn = document.getElementById('export-data-btn');
+        if (exportDataBtn) {
+            exportDataBtn.addEventListener('click', () => {
+                this.exportData();
+            });
+        }
 
-        document.getElementById('import-data-btn').addEventListener('click', () => {
-            this.showImportModal();
-        });
+        const importDataBtn = document.getElementById('import-data-btn');
+        if (importDataBtn) {
+            importDataBtn.addEventListener('click', () => {
+                this.showImportModal();
+            });
+        }
 
-        document.getElementById('cancel-import').addEventListener('click', () => {
-            this.hideImportModal();
-        });
+        const cancelImport = document.getElementById('cancel-import');
+        if (cancelImport) {
+            cancelImport.addEventListener('click', () => {
+                this.hideImportModal();
+            });
+        }
 
-        document.getElementById('select-file-btn').addEventListener('click', () => {
-            document.getElementById('import-file').click();
-        });
+        const selectFileBtn = document.getElementById('select-file-btn');
+        const importFile = document.getElementById('import-file');
+        if (selectFileBtn && importFile) {
+            selectFileBtn.addEventListener('click', () => {
+                importFile.click();
+            });
+        }
 
-        document.getElementById('import-file').addEventListener('change', (e) => {
-            this.importFromFile(e.target.files[0]);
-        });
+        if (importFile) {
+            importFile.addEventListener('change', (e) => {
+                this.importFromFile(e.target.files[0]);
+            });
+        }
 
-        document.getElementById('clipboard-import-btn').addEventListener('click', () => {
-            this.importFromClipboard();
-        });
+        const clipboardImportBtn = document.getElementById('clipboard-import-btn');
+        if (clipboardImportBtn) {
+            clipboardImportBtn.addEventListener('click', () => {
+                this.importFromClipboard();
+            });
+        }
 
-        document.getElementById('close-import-result').addEventListener('click', () => {
-            this.hideImportResultModal();
-        });
+        const closeImportResult = document.getElementById('close-import-result');
+        if (closeImportResult) {
+            closeImportResult.addEventListener('click', () => {
+                this.hideImportResultModal();
+            });
+        }
 
         // Close import modal on backdrop click
-        document.getElementById('import-modal').addEventListener('click', (e) => {
-            if (e.target === e.currentTarget) {
-                this.hideImportModal();
-            }
-        });
+        const importModal = document.getElementById('import-modal');
+        if (importModal) {
+            importModal.addEventListener('click', (e) => {
+                if (e.target === e.currentTarget) {
+                    this.hideImportModal();
+                }
+            });
+        }
 
-        document.getElementById('import-result-modal').addEventListener('click', (e) => {
-            if (e.target === e.currentTarget) {
-                this.hideImportResultModal();
-            }
-        });
+        const importResultModal = document.getElementById('import-result-modal');
+        if (importResultModal) {
+            importResultModal.addEventListener('click', (e) => {
+                if (e.target === e.currentTarget) {
+                    this.hideImportResultModal();
+                }
+            });
+        }
 
         // Switch user button
-        document.getElementById('switch-user-btn').addEventListener('click', () => {
-            this.switchUser();
-        });
+        const switchUserBtn = document.getElementById('switch-user-btn');
+        if (switchUserBtn) {
+            switchUserBtn.addEventListener('click', () => {
+                this.switchUser();
+            });
+        }
+        } catch (error) {
+            console.error('Error binding events:', error);
+            // Ensure main screen is shown even if event binding fails
+            setTimeout(() => {
+                this.showScreen('main');
+            }, 100);
+        }
     }
 
     // Navigation
     showScreen(screenName) {
-        document.querySelectorAll('.screen').forEach(screen => {
-            screen.classList.add('hidden');
-        });
-        document.getElementById(`${screenName}-screen`).classList.remove('hidden');
+        try {
+            document.querySelectorAll('.screen').forEach(screen => {
+                screen.classList.add('hidden');
+            });
+            const targetScreen = document.getElementById(`${screenName}-screen`);
+            if (targetScreen) {
+                targetScreen.classList.remove('hidden');
+            } else {
+                console.error(`Screen ${screenName}-screen not found`);
+                // Fallback to main screen
+                const mainScreen = document.getElementById('main-screen');
+                if (mainScreen) {
+                    mainScreen.classList.remove('hidden');
+                }
+            }
+        } catch (error) {
+            console.error('Error showing screen:', error);
+            // Ensure at least main screen is visible
+            const mainScreen = document.getElementById('main-screen');
+            if (mainScreen) {
+                mainScreen.classList.remove('hidden');
+            }
+        }
     }
 
     selectProfile(profileKey) {
@@ -1197,20 +1535,110 @@ class GymTracker {
     }
 }
 
+// Simple fallback function to show main screen
+function showMainScreenFallback() {
+    try {
+        const loadingScreen = document.getElementById('loading-screen');
+        const mainScreen = document.getElementById('main-screen');
+        if (loadingScreen) {
+            loadingScreen.classList.add('hidden');
+            loadingScreen.style.display = 'none';
+        }
+        if (mainScreen) {
+            mainScreen.classList.remove('hidden');
+            mainScreen.style.display = 'block';
+        }
+    } catch (e) {
+        console.error('Even fallback failed:', e);
+    }
+}
+
 // Initialize app when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
-    new GymTracker();
+    try {
+        window.gymTracker = new GymTracker();
+        
+        // Safety timeout - if app doesn't load in 2 seconds, force show main screen
+        setTimeout(() => {
+            const loadingScreen = document.getElementById('loading-screen');
+            if (loadingScreen && !loadingScreen.classList.contains('hidden')) {
+                console.warn('App initialization timeout - forcing main screen');
+                showMainScreenFallback();
+            }
+        }, 2000);
+    } catch (error) {
+        console.error('Failed to initialize GymTracker:', error);
+        // Fallback: ensure main screen is shown
+        showMainScreenFallback();
+    }
 });
 
-// Register service worker
+// Also try on window load as backup
+window.addEventListener('load', () => {
+    setTimeout(() => {
+        const loadingScreen = document.getElementById('loading-screen');
+        if (loadingScreen && !loadingScreen.classList.contains('hidden')) {
+            console.warn('Still on loading screen after window load - forcing main screen');
+            showMainScreenFallback();
+        }
+    }, 500);
+});
+
+// Register service worker with update handling
 if ('serviceWorker' in navigator) {
+    let refreshing = false;
+    
+    // Handle service worker updates
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (refreshing) return;
+        refreshing = true;
+        // Reload page when new service worker takes control
+        window.location.reload();
+    });
+    
     window.addEventListener('load', () => {
         navigator.serviceWorker.register('sw.js')
             .then(registration => {
-                console.log('SW registered: ', registration);
+                console.log('Service Worker registered:', registration);
+                
+                // Check for updates every hour
+                setInterval(() => {
+                    registration.update();
+                }, 3600000);
+                
+                // Listen for update found
+                registration.addEventListener('updatefound', () => {
+                    const newWorker = registration.installing;
+                    if (newWorker) {
+                        newWorker.addEventListener('statechange', () => {
+                            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                // New version available - show update notification
+                                const tracker = window.gymTracker;
+                                if (tracker && tracker.showNotification) {
+                                    tracker.showNotification('New version available! Reload to update.', 'info');
+                                }
+                            }
+                        });
+                    }
+                });
             })
             .catch(registrationError => {
-                console.log('SW registration failed: ', registrationError);
+                console.error('Service Worker registration failed:', registrationError);
             });
     });
 }
+
+// Offline/Online detection
+window.addEventListener('online', () => {
+    const tracker = window.gymTracker;
+    if (tracker && tracker.showNotification) {
+        tracker.showNotification('Back online', 'success');
+    }
+});
+
+window.addEventListener('offline', () => {
+    const tracker = window.gymTracker;
+    if (tracker && tracker.showNotification) {
+        tracker.showNotification('Working offline', 'info');
+    }
+});
