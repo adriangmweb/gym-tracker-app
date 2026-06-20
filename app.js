@@ -221,6 +221,10 @@ class GymTracker {
             this.saveExercise();
         });
 
+        document.getElementById('delete-exercise').addEventListener('click', () => {
+            this.deleteExercise();
+        });
+
         // Close modal on backdrop click
         document.getElementById('edit-modal').addEventListener('click', (e) => {
             if (e.target === e.currentTarget) {
@@ -743,6 +747,22 @@ class GymTracker {
         this.saveData();
         this.renderExercises();
         this.hideModal();
+    }
+
+    deleteExercise() {
+        if (!this.currentProfile || !this.currentMuscleGroup || !this.currentExercise) return;
+
+        const exercises = this.data.profiles[this.currentProfile].exercises[this.currentMuscleGroup];
+        if (!exercises || !exercises[this.currentExercise]) return;
+
+        if (confirm(`Delete "${this.currentExercise}" and all its history?`)) {
+            delete exercises[this.currentExercise];
+            this.currentExercise = null;
+            this.saveData();
+            this.renderExercises();
+            this.hideFullHistory();
+            this.hideModal();
+        }
     }
 
     showModal() {

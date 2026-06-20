@@ -462,6 +462,21 @@ body {
     background-color: var(--bg-primary);
 }
 
+.btn-danger {
+    background-color: rgba(255, 59, 48, 0.12);
+    color: #ff453a;
+    border: 1px solid rgba(255, 59, 48, 0.35);
+}
+
+.btn-danger:hover {
+    background-color: rgba(255, 59, 48, 0.22);
+}
+
+.btn-full-width {
+    width: 100%;
+    margin-top: 1rem;
+}
+
 /* Exercise History */
 .history-section {
     margin-top: 1.5rem;
