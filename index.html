@@ -149,7 +149,10 @@
             <div class="modal-content">
                 <div class="modal-header">
                     <h2 id="edit-exercise-name">Exercise</h2>
-                    <button class="edit-name-btn" id="edit-name-btn" title="Edit exercise name">✏️</button>
+                    <div class="modal-header-actions">
+                        <button class="edit-name-btn" id="edit-name-btn" title="Edit exercise name">✏️</button>
+                        <button class="edit-name-btn delete-exercise-btn" id="delete-exercise" title="Delete exercise">🗑️</button>
+                    </div>
                 </div>
                 
                 <div class="input-group">
@@ -160,7 +163,6 @@
                     <button class="btn btn-secondary" id="cancel-edit">Cancel</button>
                     <button class="btn btn-primary" id="save-edit">Save</button>
                 </div>
-                <button class="btn btn-danger btn-full-width" id="delete-exercise">Delete Exercise</button>
                 
                 <!-- History Section -->
                 <div id="exercise-history" class="history-section">
